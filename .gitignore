@@ -1,0 +1,41 @@
+# ===========================================
+# CC_Agents_Commands .gitignore
+# ===========================================
+
+# -------------------------------------------
+# Development/Planning Files (NOT deliverables)
+# -------------------------------------------
+
+# BMAD framework (helper for planning, not shipped)
+.bmad/
+
+# Planning documents (PRD, architecture, epics, etc.)
+docs/
+
+# Claude Code guidance file (development aid)
+CLAUDE.md
+
+# Local project Claude Code config (BMAD commands for THIS repo)
+# NOT the distributable tools - those go in root-level folders
+.claude/
+
+# -------------------------------------------
+# OS Artifacts
+# -------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# -------------------------------------------
+# Editor/IDE Configs
+# -------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# -------------------------------------------
+# Optional: Local Testing Artifacts
+# -------------------------------------------
+.test-output/

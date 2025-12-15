@@ -1,5 +1,6 @@
 ---
-description: "Simple PR workflow helper - delegates to pr-workflow-manager agent"
+description: "Manages pull request workflows"
+prerequisites: "`github` MCP"
 argument-hint: "[action] [details] | Examples: 'create story 8.1', 'status', 'merge', 'fix CI'"
 allowed-tools: ["Task", "Bash", "SlashCommand"]
 ---

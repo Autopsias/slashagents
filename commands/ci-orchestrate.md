@@ -1,5 +1,6 @@
 ---
-description: "Orchestrate CI/CD pipeline fixes through parallel specialist agent deployment"
+description: "Orchestrates CI/CD pipeline fixes"
+prerequisites: "`github` MCP"
 argument-hint: "[issue_description] [--check-actions] [--fix-all] [--quality-gates] [--performance]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---

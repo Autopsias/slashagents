@@ -1,5 +1,6 @@
 ---
-description: "Parallelize tasks across multiple independent sub-agents for maximum efficiency"
+description: "Parallelizes tasks across sub-agents"
+prerequisites: "—"
 argument-hint: "<task_description> [--workers=N] [--strategy=auto|file|feature|layer|test|analysis]"
 allowed-tools: ["Task", "TodoWrite", "Glob", "Grep", "Read", "LS"]
 ---

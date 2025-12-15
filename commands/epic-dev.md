@@ -1,5 +1,6 @@
 ---
-description: "Automate BMAD development cycle for stories in an epic"
+description: "Automates BMAD development cycle"
+prerequisites: "BMAD framework"
 argument-hint: "<epic-number> [--yolo]"
 ---
 

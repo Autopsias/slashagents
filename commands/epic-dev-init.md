@@ -1,5 +1,6 @@
 ---
-description: "Verify BMAD project setup for epic-dev"
+description: "Verifies BMAD project setup"
+prerequisites: "BMAD framework"
 argument-hint: ""
 ---
 

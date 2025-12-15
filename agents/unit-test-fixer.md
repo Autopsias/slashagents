@@ -1,14 +1,7 @@
 ---
 name: unit-test-fixer
-description: |
-  Fixes Python test failures for pytest and unittest frameworks.
-  Handles common assertion and mock issues for any Python project.
-  Use PROACTIVELY when unit tests fail due to assertions, mocks, or business logic issues.
-  Examples:
-  - "pytest assertion failed in test_function()"
-  - "Mock configuration not working properly"
-  - "Test fixture setup failing"
-  - "unittest errors in test suite"
+description: "Fixes Python test failures for pytest and unittest"
+prerequisites: "test files in project"
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, SlashCommand
 model: sonnet
 color: purple

@@ -1,9 +1,7 @@
 ---
 name: pr-workflow-manager
-description: |
-  Generic PR workflow orchestrator for ANY Git project. Handles branch creation,
-  PR creation, status checks, validation, and merging. Auto-detects project structure.
-  Use for: "create PR", "PR status", "merge PR", "sync branch", "check if ready to merge"
+description: "Manages pull request workflows for any Git project"
+prerequisites: "`github` MCP"
 tools: Bash, Read, Grep, Glob, TodoWrite, BashOutput, KillShell, Task, SlashCommand
 model: sonnet
 color: purple

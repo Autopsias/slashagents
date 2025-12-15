@@ -1,14 +1,7 @@
 ---
 name: e2e-test-fixer
-description: |
-  Fixes Playwright E2E test failures including selector issues, timeouts, race conditions, and browser-specific problems.
-  Uses artifacts (screenshots, traces, videos) for debugging context.
-  Works with any Playwright project. Use PROACTIVELY when E2E tests fail.
-  Examples:
-  - "Playwright test timeout waiting for selector"
-  - "Element not visible in webkit"
-  - "Flaky test due to race condition"
-  - "Cross-browser inconsistency in test results"
+description: "Fixes Playwright E2E test failures"
+prerequisites: "E2E test files in project"
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, Write
 model: sonnet
 color: cyan

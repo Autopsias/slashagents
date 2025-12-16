@@ -34,7 +34,7 @@ CC_Agents_Commands/
 **Important:** Distributable tools are at ROOT level, NOT in `.claude/`. Users copy these folders to their `~/.claude/` (global) or project `.claude/` folder.
 
 **Ignored (development only):**
-- `.bmad/` - BMAD framework helper
+- `_bmad/` - BMAD framework helper
 - `.claude/` - Local BMAD commands for this repo
 - `docs/` - Planning documents (PRD, architecture, epics)
 - `CLAUDE.md` - This guidance file

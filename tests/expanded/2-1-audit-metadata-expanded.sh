@@ -11,7 +11,7 @@
 # Usage: ./tests/expanded/2-1-audit-metadata-expanded.sh
 # Exit code: 0 = all tests pass, non-zero = number of failed tests
 
-set -e
+set -eo pipefail
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -436,5 +436,6 @@ else
             echo "  - ${result#FAIL: }"
         fi
     done
-    exit $FAIL_COUNT
+    # Cap exit code at 1 (standard for test failure)
+    exit 1
 fi

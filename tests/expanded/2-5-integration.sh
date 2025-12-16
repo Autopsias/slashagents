@@ -6,9 +6,10 @@
 # Priority: [P0] - Critical integration between documents
 # ==============================================================================
 
-set -e
+set -eo pipefail
 
-PROJECT_ROOT="/Users/ricardocarvalho/CC_Agents_Commands"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TIER_DOC="${PROJECT_ROOT}/docs/sprint-artifacts/tier-classifications.md"
 METADATA_AUDIT="${PROJECT_ROOT}/docs/sprint-artifacts/metadata-audit.md"
 CLAUDE_MD="${PROJECT_ROOT}/CLAUDE.md"

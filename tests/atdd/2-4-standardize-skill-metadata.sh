@@ -4,7 +4,7 @@
 # =============================================================================
 # These tests verify that the skill file (pr-workflow.md) has standardized metadata:
 # - Description field: verb-first, under 60 characters
-# - Prerequisites field: correct tier notation (em dash for standalone)
+# - Prerequisites field: correct tier notation (MCP-Enhanced via pr-workflow-manager)
 # - Frontmatter structure: exact YAML format
 #
 # Test Phase: RED (tests should fail until implementation is complete)
@@ -36,8 +36,8 @@ SKILL_FILE="pr-workflow.md"
 # Expected description (standardized format from story)
 EXPECTED_DESCRIPTION="Manages PR workflows - create, status, merge, sync"
 
-# Expected prerequisites (Standalone tier uses em dash U+2014)
-EXPECTED_PREREQUISITES="—"
+# Expected prerequisites (MCP-Enhanced tier - delegates to pr-workflow-manager which requires github MCP)
+EXPECTED_PREREQUISITES="\`github\` MCP (via pr-workflow-manager)"
 
 # Present-tense verbs (common starting verbs for descriptions)
 VALID_VERBS="Manages|Handles|Provides|Fixes|Scans|Executes|Investigates|Analyzes|Validates|Processes|Monitors|Resolves|Checks|Creates|Generates"
@@ -286,8 +286,8 @@ test_prerequisites_field_exists() {
     return 0
 }
 
-# TEST-AC-2.4.2.2: Prerequisites uses em dash for standalone skill
-test_prerequisites_uses_em_dash() {
+# TEST-AC-2.4.2.2: Prerequisites matches MCP-Enhanced tier (skill delegates to pr-workflow-manager)
+test_prerequisites_matches_mcp_enhanced() {
     local file="$SKILLS_DIR/$SKILL_FILE"
 
     if [[ ! -f "$file" ]]; then
@@ -298,10 +298,10 @@ test_prerequisites_uses_em_dash() {
     local prereq
     prereq=$(get_prerequisites "$file")
 
-    # Per architecture.md: standalone skills use "—" (em dash U+2014)
+    # Per tier-classifications.md: pr-workflow.md is MCP-Enhanced (requires github MCP via pr-workflow-manager)
     if [[ "$prereq" != "$EXPECTED_PREREQUISITES" ]]; then
         echo "  Prerequisites mismatch in: $SKILL_FILE"
-        echo "  Expected: '$EXPECTED_PREREQUISITES' (em dash U+2014 for standalone)"
+        echo "  Expected: '$EXPECTED_PREREQUISITES' (MCP-Enhanced tier)"
         echo "  Actual:   '$prereq'"
         return 1
     fi
@@ -329,12 +329,14 @@ test_prerequisites_valid_format() {
     # Valid formats per architecture:
     # - "—" (em dash U+2014) for standalone
     # - "`server` MCP" for MCP-enhanced (backticks around server name)
+    # - "`server` MCP (description)" for MCP-enhanced with clarification
     # - descriptive text for Project-Context
 
     # Check for valid formats
     if [[ "$prereq" == "—" ]]; then
         return 0
-    elif echo "$prereq" | grep -qE '^\`[a-z-]+\` MCP$'; then
+    elif echo "$prereq" | grep -qE '^\`[a-z-]+\` MCP'; then
+        # Matches "`server` MCP" or "`server` MCP (description)"
         return 0
     elif [[ -n "$prereq" ]] && [[ "$prereq" =~ ^[a-zA-Z] ]]; then
         # Allows descriptive text (Project-Context tier)
@@ -500,7 +502,7 @@ test_frontmatter_exact_structure() {
     # Expected exact frontmatter (4 lines)
     local expected_frontmatter='---
 description: "Manages PR workflows - create, status, merge, sync"
-prerequisites: "—"
+prerequisites: "`github` MCP (via pr-workflow-manager)"
 ---'
 
     # Get actual first 4 lines of file
@@ -572,8 +574,8 @@ echo -e "\n${BLUE}=== AC2: Prerequisites Field Tests ===${NC}\n"
 run_test "TEST-AC-2.4.2.1: Prerequisites field exists in $SKILL_FILE" \
     test_prerequisites_field_exists
 
-run_test "TEST-AC-2.4.2.2: Prerequisites uses em dash for standalone skill" \
-    test_prerequisites_uses_em_dash
+run_test "TEST-AC-2.4.2.2: Prerequisites matches MCP-Enhanced tier" \
+    test_prerequisites_matches_mcp_enhanced
 
 run_test "TEST-AC-2.4.2.3: Prerequisites follows valid tier notation format" \
     test_prerequisites_valid_format

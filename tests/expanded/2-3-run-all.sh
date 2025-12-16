@@ -12,8 +12,9 @@ MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Project root
-PROJECT_ROOT="/Users/ricardocarvalho/CC_Agents_Commands"
+# Project root (computed dynamically, not hardcoded)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ATDD_DIR="$PROJECT_ROOT/tests/atdd"
 EXPANDED_DIR="$PROJECT_ROOT/tests/expanded"
 
@@ -66,8 +67,6 @@ else
 fi
 
 echo ""
-echo "Press Enter to continue to P1 tests..."
-read
 
 # =============================================================================
 # Run P1: Error Handling & Regression Prevention (Important - Should Pass)
@@ -98,8 +97,6 @@ else
 fi
 
 echo ""
-echo "Press Enter to continue to P2 tests..."
-read
 
 # =============================================================================
 # Run P2: Edge Cases & Boundary Conditions (Good to Have)
@@ -130,8 +127,6 @@ else
 fi
 
 echo ""
-echo "Press Enter to continue to P3 tests..."
-read
 
 # =============================================================================
 # Run P3: Integration & Future-Proofing (Optional)

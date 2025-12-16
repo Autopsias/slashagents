@@ -1,0 +1,182 @@
+# CC_Agents_Commands
+**Version:** 1.0.0 | **Updated:** 2025-12-16 | **Author:** Ricardo
+
+A curated collection of 23 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 11 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 11 agents (specialized agents for testing, code quality, and workflow automation), and 1 skill (reusable PR operations).
+
+Whether you're managing pull requests, orchestrating CI pipelines, or following structured BMAD development cycles, these tools preserve your creative momentum by automating repetitive tasks and providing intelligent assistance exactly when you need it.
+
+## Contents
+
+| Type | Count | Description |
+|------|-------|-------------|
+| **Commands** | 11 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
+| **Agents** | 11 | Specialized agents for specific tasks |
+| **Skills** | 1 | Reusable skill definitions |
+
+## Installation
+
+> ⚠️ **Warning:** If you have existing commands in `~/.claude/`, back them up first. New files with the same name will overwrite existing ones.
+
+Follow these steps to install CC_Agents_Commands:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/ricardocarvalho/CC_Agents_Commands.git
+   cd CC_Agents_Commands
+   ```
+
+2. **Backup existing commands** (if any exist)
+   ```bash
+   cp -r ~/.claude ~/.claude.backup
+   ```
+
+3. **Copy tools to your target location**
+
+   Choose between **global** installation (tools available in all projects) or **project** installation (project-specific, version-controlled).
+
+   **Global installation** (`~/.claude/`) - recommended for personal productivity tools:
+   ```bash
+   cp -r commands/ ~/.claude/commands/
+   cp -r agents/ ~/.claude/agents/
+   cp -r skills/ ~/.claude/skills/
+   ```
+
+   **Project installation** (`.claude/`) - recommended for team projects:
+   ```bash
+   cp -r commands/ .claude/commands/
+   cp -r agents/ .claude/agents/
+   cp -r skills/ .claude/skills/
+   ```
+
+4. **Start a new Claude Code session**
+
+   Commands load automatically when you start a new session (no restart required).
+
+5. **Verify installation**
+
+   In your Claude Code session, type `/help` and you should see your installed commands listed.
+
+## Quick Start
+
+Try these commands to experience immediate value:
+
+### Resume Your Workflow
+Generates a continuation prompt to pick up where you left off in a new session.
+```
+/nextsession
+```
+
+### Check PR Status
+Shows your open pull requests and their current state. *Note: Enhanced with `github` MCP server for full functionality.*
+```
+/pr status
+```
+
+### Orchestrate Quality Checks
+Runs quality checks, stages changes, and creates a well-formatted commit.
+```
+/commit-orchestrate
+```
+
+### The 'Aha' Moment: Auto-Fix CI Failures
+Analyzes CI failures, spawns parallel agents, and fixes issues automatically. *Note: Enhanced with `github` MCP server for full functionality.*
+```
+/ci-orchestrate
+```
+
+## Commands Reference
+
+Commands are organized by workflow moment to help you quickly find the right tool for your task.
+
+### Starting Work
+
+| Command | What it does | Prerequisites |
+|---------|--------------|---------------|
+| `/nextsession` | Generates continuation prompt for next session | — |
+| `/epic-dev-init` | Verifies BMAD project setup for epic development | BMAD framework |
+
+### Building
+
+| Command | What it does | Prerequisites |
+|---------|--------------|---------------|
+| `/epic-dev` | Automates BMAD development cycle for epic stories | BMAD framework |
+| `/epic-dev-full` | Executes full TDD/ATDD-driven BMAD development | BMAD framework |
+| `/parallelize` | Parallelizes tasks across sub-agents | — |
+| `/parallelize-agents` | Parallelizes tasks with specialized agents | — |
+
+### Quality Gates
+
+| Command | What it does | Prerequisites |
+|---------|--------------|---------------|
+| `/ci-orchestrate` | Orchestrates CI failure analysis and fixes | `github` MCP |
+| `/test-orchestrate` | Orchestrates test failure analysis and fixes | — |
+| `/usertestgates` | Finds and runs next test gate | test gates in project |
+
+### Shipping
+
+| Command | What it does | Prerequisites |
+|---------|--------------|---------------|
+| `/pr` | Manages pull request workflows | `github` MCP |
+| `/commit-orchestrate` | Orchestrates git commit with quality checks | — |
+
+## Agents Reference
+
+Agents are organized by domain to help you quickly find the right specialist for your task.
+
+### Test Fixers
+
+| Agent | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `unit-test-fixer` | Fixes Python test failures for pytest and unittest | test files in project |
+| `api-test-fixer` | Fixes API endpoint test failures | API test files in project |
+| `database-test-fixer` | Fixes database mock and integration test failures | database test files in project |
+| `e2e-test-fixer` | Fixes Playwright E2E test failures | E2E test files in project |
+
+### Code Quality
+
+| Agent | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `linting-fixer` | Fixes Python linting and formatting issues | linting config in project |
+| `type-error-fixer` | Fixes Python type errors and annotations | Python/TypeScript project |
+| `import-error-fixer` | Fixes Python import and dependency errors | code files in project |
+| `security-scanner` | Scans code for security vulnerabilities | code files in project |
+
+### Workflow Support
+
+| Agent | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `pr-workflow-manager` | Manages pull request workflows via GitHub | `github` MCP |
+| `parallel-executor` | Executes tasks independently without delegation | — |
+| `digdeep` | Performs Five Whys root cause analysis | `perplexity-ask` MCP |
+
+## Skills Reference
+
+Skills leverage agents to provide natural language interfaces for complex multi-step workflows.
+
+| Skill | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `pr-workflow` | Manages PR workflows - create, status, merge, sync | `github` MCP (via pr-workflow-manager) |
+
+## Troubleshooting
+
+**Prerequisites notation:**
+The Prerequisites column uses `—` for standalone tools, `server-name` MCP for tools requiring MCP servers, and "BMAD framework" or descriptive text for specialized requirements.
+
+**MCP server not working?**
+Configure the required MCP server in your Claude settings (e.g., `github` or `perplexity-ask`). Check the Prerequisites column in reference tables above to see which tools require MCP servers. Then restart Claude Code to apply the changes.
+
+**BMAD commands not found?**
+Install the BMAD framework from https://github.com/BESTRobotics/BMAD before using `/epic-dev`, `/epic-dev-full`, or `/epic-dev-init` commands. See BMAD documentation for installation instructions.
+
+**Command or agent not recognized?**
+Verify files are in the correct location (`~/.claude/` for global or `.claude/` for project). Then start a new Claude Code session (commands load automatically). Ensure you are in an active Claude Code session, not a regular terminal.
+
+## Requirements
+
+- [Claude Code](https://claude.ai/code) CLI installed
+- Some extensions require specific MCP servers (noted in individual files)
+- BMAD extensions require BMAD framework installed
+
+## License
+
+MIT

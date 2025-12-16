@@ -1,0 +1,304 @@
+# Documentation CI Pipeline
+# Validates markdown quality, link integrity, shell scripts, and file structure
+# Optimized for Claude Code extensions distribution project
+
+name: Docs CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'agents/**'
+      - 'commands/**'
+      - 'skills/**'
+      - 'tests/**'
+      - 'docs/**'
+      - '*.md'
+      - '.github/workflows/docs-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'agents/**'
+      - 'commands/**'
+      - 'skills/**'
+      - 'tests/**'
+      - 'docs/**'
+      - '*.md'
+  workflow_dispatch: # Manual trigger
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================
+  # Stage 1: Markdown Quality
+  # ============================================
+  markdown-lint:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+
+      - name: Run markdownlint
+        run: |
+          echo "Linting distributable markdown files..."
+          markdownlint-cli2 \
+            "agents/**/*.md" \
+            "commands/**/*.md" \
+            "skills/**/*.md" \
+            "README.md" \
+            --config .markdownlint.json || true
+          # Note: Using || true initially to see all issues
+          # Remove || true once linting rules are tuned
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "Markdown linting complete"
+          echo "Files checked: agents/, commands/, skills/, README.md"
+
+  # ============================================
+  # Stage 2: Link Validation
+  # ============================================
+  link-check:
+    name: Link Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install markdown-link-check
+        run: npm install -g markdown-link-check
+
+      - name: Check links in distributable files
+        run: |
+          echo "Validating links in distributable markdown files..."
+
+          # Find all markdown files in distributable directories
+          find agents commands skills -name "*.md" -type f | while read file; do
+            echo "Checking: $file"
+            markdown-link-check "$file" --config .markdown-link-check.json 2>/dev/null || true
+          done
+
+          # Check README separately (important)
+          if [ -f "README.md" ]; then
+            echo "Checking: README.md"
+            markdown-link-check "README.md" --config .markdown-link-check.json 2>/dev/null || true
+          fi
+
+      - name: Report results
+        if: always()
+        run: echo "Link validation complete"
+
+  # ============================================
+  # Stage 3: Shell Script Validation
+  # ============================================
+  shellcheck:
+    name: Shell Script Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './tests'
+          severity: warning
+        continue-on-error: true # Non-blocking initially
+
+      - name: Check executable permissions
+        run: |
+          echo "Verifying test scripts are executable..."
+          for script in tests/*.sh; do
+            if [ -f "$script" ]; then
+              if [ -x "$script" ]; then
+                echo "OK: $script is executable"
+              else
+                echo "WARN: $script is not executable"
+              fi
+            fi
+          done
+
+  # ============================================
+  # Stage 4: File Structure Validation
+  # ============================================
+  structure-check:
+    name: File Structure Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required files exist
+        run: |
+          echo "Checking required files..."
+
+          required_files=(
+            "README.md"
+            "LICENSE"
+            "CLAUDE.md"
+          )
+
+          missing=0
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "OK: $file exists"
+            else
+              echo "MISSING: $file"
+              missing=$((missing + 1))
+            fi
+          done
+
+          if [ $missing -gt 0 ]; then
+            echo ""
+            echo "ERROR: $missing required file(s) missing"
+            exit 1
+          fi
+
+      - name: Validate distributable directories
+        run: |
+          echo "Checking distributable directories..."
+
+          # Check agents directory
+          agent_count=$(find agents -name "*.md" -type f 2>/dev/null | wc -l)
+          echo "agents/: $agent_count markdown files"
+
+          # Check commands directory
+          command_count=$(find commands -name "*.md" -type f 2>/dev/null | wc -l)
+          echo "commands/: $command_count markdown files"
+
+          # Check skills directory
+          skill_count=$(find skills -name "*.md" -type f 2>/dev/null | wc -l)
+          echo "skills/: $skill_count markdown files"
+
+          # Validate minimum content
+          total=$((agent_count + command_count + skill_count))
+          if [ $total -lt 10 ]; then
+            echo "WARNING: Only $total distributable files found (expected 20+)"
+          else
+            echo "OK: $total distributable files found"
+          fi
+
+      - name: Check naming conventions
+        run: |
+          echo "Validating kebab-case naming..."
+
+          errors=0
+          for dir in agents commands skills; do
+            if [ -d "$dir" ]; then
+              for file in "$dir"/*.md; do
+                if [ -f "$file" ]; then
+                  basename=$(basename "$file")
+                  # Check for uppercase letters (violates kebab-case)
+                  if echo "$basename" | grep -q '[A-Z]'; then
+                    echo "ERROR: $file contains uppercase (should be kebab-case)"
+                    errors=$((errors + 1))
+                  fi
+                  # Check for underscores (should use hyphens)
+                  if echo "$basename" | grep -q '_'; then
+                    echo "WARN: $file contains underscore (prefer hyphens)"
+                  fi
+                fi
+              done
+            fi
+          done
+
+          if [ $errors -gt 0 ]; then
+            echo ""
+            echo "ERROR: $errors naming convention violations"
+            exit 1
+          fi
+          echo "OK: All files follow kebab-case naming"
+
+  # ============================================
+  # Stage 5: Content Validation
+  # ============================================
+  content-check:
+    name: Content Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for required frontmatter
+        run: |
+          echo "Validating markdown frontmatter..."
+
+          # Agents should have name and description
+          echo "Checking agents..."
+          for file in agents/*.md; do
+            if [ -f "$file" ]; then
+              if head -20 "$file" | grep -q "name:"; then
+                echo "OK: $file has name"
+              else
+                echo "WARN: $file missing name in frontmatter"
+              fi
+            fi
+          done
+
+          echo ""
+          echo "Content validation complete"
+
+      - name: Check for hardcoded paths
+        run: |
+          echo "Scanning for hardcoded paths (should be relative/configurable)..."
+
+          # Look for absolute paths that shouldn't be there
+          if grep -r "/Users/" agents/ commands/ skills/ 2>/dev/null; then
+            echo "WARNING: Found hardcoded /Users/ paths"
+          fi
+
+          if grep -r "/home/" agents/ commands/ skills/ 2>/dev/null; then
+            echo "WARNING: Found hardcoded /home/ paths"
+          fi
+
+          echo "Hardcoded path scan complete"
+
+  # ============================================
+  # Summary Job
+  # ============================================
+  ci-summary:
+    name: CI Summary
+    needs: [markdown-lint, link-check, shellcheck, structure-check, content-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check job results
+        run: |
+          echo "================================================"
+          echo "           DOCS CI PIPELINE SUMMARY"
+          echo "================================================"
+          echo ""
+          echo "Markdown Lint:    ${{ needs.markdown-lint.result }}"
+          echo "Link Check:       ${{ needs.link-check.result }}"
+          echo "ShellCheck:       ${{ needs.shellcheck.result }}"
+          echo "Structure Check:  ${{ needs.structure-check.result }}"
+          echo "Content Check:    ${{ needs.content-check.result }}"
+          echo ""
+          echo "================================================"
+
+          # Fail if critical jobs failed
+          if [ "${{ needs.structure-check.result }}" == "failure" ]; then
+            echo "CRITICAL: Structure validation failed"
+            exit 1
+          fi

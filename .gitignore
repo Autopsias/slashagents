@@ -8,12 +8,12 @@
 
 # BMAD framework (helper for planning, not shipped)
 .bmad/
+_bmad/
 
 # Planning documents (PRD, architecture, epics, etc.)
 docs/
 
 # Claude Code guidance file (development aid)
-CLAUDE.md
 
 # Local project Claude Code config (BMAD commands for THIS repo)
 # NOT the distributable tools - those go in root-level folders

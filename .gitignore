@@ -13,7 +13,6 @@
 docs/
 
 # Claude Code guidance file (development aid)
-CLAUDE.md
 
 # Local project Claude Code config (BMAD commands for THIS repo)
 # NOT the distributable tools - those go in root-level folders

@@ -1,13 +1,69 @@
 # CC_Agents_Commands - Pre-Release Validation Checklist
 
 **Version:** 1.0
-**Last Updated:** 2025-12-15
+**Last Updated:** 2025-12-16
 
 > This checklist MUST be completed before any public release.
 
 ---
 
-## 1. Clean Environment Test (FR26)
+## Table of Contents
+
+1. [Tool Validation Matrix](#1-tool-validation-matrix)
+2. [Clean Environment Test](#2-clean-environment-test)
+3. [First-Use Test Protocol](#3-first-use-test-protocol)
+4. [Pre-Release Quality Gates](#4-pre-release-quality-gates)
+5. [Known Limitations](#5-known-limitations)
+6. [Validation History](#6-validation-history)
+
+---
+
+## 1. Tool Validation Matrix
+
+Test each tool in clean environment. For "Clean Env Test" and "Graceful Failure" columns, mark:
+- **PASS** - Tool works correctly
+- **FAIL** - Tool crashes or shows confusing errors
+- **SKIP** - Prerequisites not available for testing
+
+Use checkboxes `[ ]` to track completion, then replace with PASS/FAIL/SKIP when tested.
+
+| Tool | Type | Tier | Clean Env Test | Graceful Failure | Prerequisites |
+|------|------|------|----------------|------------------|---------------|
+| test-orchestrate.md | command | Standalone | [ ] | [ ] | — |
+| commit-orchestrate.md | command | Standalone | [ ] | [ ] | — |
+| parallelize.md | command | Standalone | [ ] | [ ] | — |
+| parallelize-agents.md | command | Standalone | [ ] | [ ] | — |
+| nextsession.md | command | Standalone | [ ] | [ ] | — |
+| pr.md | command | MCP-Enhanced | [ ] | [ ] | `github` MCP |
+| ci-orchestrate.md | command | MCP-Enhanced | [ ] | [ ] | `github` MCP |
+| epic-dev.md | command | BMAD-Required | [ ] | [ ] | BMAD framework |
+| epic-dev-full.md | command | BMAD-Required | [ ] | [ ] | BMAD framework |
+| epic-dev-init.md | command | BMAD-Required | [ ] | [ ] | BMAD framework |
+| usertestgates.md | command | Project-Context | [ ] | [ ] | test gates infrastructure |
+| parallel-executor.md | agent | Standalone | [ ] | [ ] | — |
+| pr-workflow-manager.md | agent | MCP-Enhanced | [ ] | [ ] | `github` MCP |
+| digdeep.md | agent | MCP-Enhanced | [ ] | [ ] | `perplexity-ask` MCP |
+| unit-test-fixer.md | agent | Project-Context | [ ] | [ ] | test files in project |
+| api-test-fixer.md | agent | Project-Context | [ ] | [ ] | API test files in project |
+| database-test-fixer.md | agent | Project-Context | [ ] | [ ] | database test files in project |
+| e2e-test-fixer.md | agent | Project-Context | [ ] | [ ] | E2E test files in project |
+| linting-fixer.md | agent | Project-Context | [ ] | [ ] | linting config in project |
+| type-error-fixer.md | agent | Project-Context | [ ] | [ ] | Python/TypeScript project |
+| import-error-fixer.md | agent | Project-Context | [ ] | [ ] | code files in project |
+| security-scanner.md | agent | Project-Context | [ ] | [ ] | code files in project |
+| pr-workflow.md | skill | MCP-Enhanced | [ ] | [ ] | `github` MCP |
+
+**Tier Distribution:**
+- Standalone: 6 tools (5 commands, 1 agent)
+- MCP-Enhanced: 5 tools (2 commands, 2 agents, 1 skill)
+- BMAD-Required: 3 tools (3 commands)
+- Project-Context: 9 tools (1 command, 8 agents)
+
+**Total: 23 tools (11 commands, 11 agents, 1 skill)**
+
+---
+
+## 2. Clean Environment Test
 
 ### Setup
 - [ ] Create fresh user account OR use clean Claude Code installation
@@ -20,6 +76,27 @@
 - [ ] Start NEW Claude Code session
 - [ ] Run `/help` - verify commands appear
 
+### Expected Behavior by Tier
+
+**Standalone Tools (6):**
+- Should work immediately with zero configuration
+- No graceful failure testing needed (no prerequisites)
+
+**MCP-Enhanced Tools (5):**
+- Should detect missing MCP servers
+- Should provide clear guidance on required MCP configuration
+- Must not crash or produce confusing errors
+
+**BMAD-Required Tools (3):**
+- Should detect absence of `.bmad/` directory
+- Should show clear "Not a BMAD project" error message
+- Should explain what BMAD framework is and where to get it
+
+**Project-Context Tools (9):**
+- Should detect missing required files (tests, linting config, etc.)
+- Should provide actionable error messages
+- Should not crash on empty or incompatible projects
+
 ### Result
 - **Tester:**
 - **Date:**
@@ -28,62 +105,24 @@
 
 ---
 
-## 2. Tool Verification Matrix (FR26)
-
-Test each tool in clean environment. Mark PASS/FAIL/SKIP (if prerequisites not met).
-
-### Commands (11)
-
-| Command | Test Action | Expected Result | Status |
-|---------|-------------|-----------------|--------|
-| `/pr` | Run `/pr status` | Shows PR status or "No PR" message | |
-| `/pr` (default) | Run `/pr` with uncommitted changes | Stages, commits, pushes | |
-| `/ci-orchestrate` | Run without CI failures | Reports "no failures" or analyzes | |
-| `/test-orchestrate` | Run in project with tests | Analyzes test status | |
-| `/commit-orchestrate` | Run with staged changes | Creates formatted commit | |
-| `/parallelize` | Run with simple task | Splits and executes | |
-| `/parallelize-agents` | Run with multi-domain task | Spawns specialist agents | |
-| `/epic-dev` | Run without BMAD | Shows "Not a BMAD project" error | |
-| `/epic-dev-full` | Run without BMAD | Shows "Not a BMAD project" error | |
-| `/epic-dev-init` | Run without BMAD | Reports BMAD status | |
-| `/nextsession` | Run in any project | Generates continuation prompt | |
-| `/usertestgates` | Run without BMAD | Shows appropriate error | |
-
-### Agents (11)
-
-| Agent | Spawn Method | Expected Behavior | Status |
-|-------|--------------|-------------------|--------|
-| `unit-test-fixer` | Via `/test-orchestrate` or direct Task | Analyzes Python test failures | |
-| `api-test-fixer` | Via `/test-orchestrate` or direct Task | Analyzes API test failures | |
-| `database-test-fixer` | Via `/test-orchestrate` or direct Task | Analyzes DB test failures | |
-| `e2e-test-fixer` | Via `/test-orchestrate` or direct Task | Analyzes E2E test failures | |
-| `linting-fixer` | Via `/ci-orchestrate` or direct Task | Fixes linting errors | |
-| `type-error-fixer` | Via `/ci-orchestrate` or direct Task | Fixes type errors | |
-| `import-error-fixer` | Via `/ci-orchestrate` or direct Task | Fixes import errors | |
-| `security-scanner` | Direct Task spawn | Scans for vulnerabilities | |
-| `pr-workflow-manager` | Via `/pr` command | Manages PR operations | |
-| `parallel-executor` | Via `/parallelize` | Executes parallel tasks | |
-| `digdeep` | Direct Task spawn | Performs root cause analysis | |
-
-### Skills (1)
-
-| Skill | Trigger | Expected Behavior | Status |
-|-------|---------|-------------------|--------|
-| `pr-workflow` | Natural language PR requests | Activates PR management | |
-
----
-
-## 3. First-Use Test Protocol (FR27)
+## 3. First-Use Test Protocol
 
 ### Tester Requirements
 - Person who has NEVER used these tools before
 - Has Claude Code installed
 - Can follow written instructions only (no verbal help)
 
+### Cold Tester Requirement
+**Minimum: 2-3 cold testers** (per architecture.md Phase 4)
+
 ### Test Procedure
 1. Provide tester with ONLY the README.md
 2. Ask them to install the tools
-3. Ask them to run 3 commands of their choice
+3. Ask them to test tools from each tier:
+   - **Standalone:** Try `/nextsession` (should work immediately)
+   - **MCP-Enhanced:** Try `/pr` without MCP (should show graceful error)
+   - **BMAD-Required:** Try `/epic-dev` without BMAD (should show clear error)
+   - **Project-Context:** Try `@unit-test-fixer` without test files (should show actionable error)
 4. Record time taken and any confusion points
 
 ### Tester Feedback Form
@@ -114,53 +153,63 @@ Test each tool in clean environment. Mark PASS/FAIL/SKIP (if prerequisites not m
 
 ---
 
-## 4. Prerequisites Audit (FR28)
+## 4. Pre-Release Quality Gates
 
-### Tool Dependency Verification
+All gates below MUST be PASS before release.
 
-| Tool | Declared Prerequisites | Verified Working | Notes |
-|------|----------------------|------------------|-------|
-| `/pr` | None (standalone) | | |
-| `/commit-orchestrate` | None (standalone) | | |
-| `/nextsession` | None (standalone) | | |
-| `/parallelize` | None (standalone) | | |
-| `/parallelize-agents` | None (standalone) | | |
-| `/ci-orchestrate` | Enhanced: `github` MCP | | |
-| `/test-orchestrate` | Enhanced: `ide` MCP | | |
-| `/epic-dev` | BMAD framework | | |
-| `/epic-dev-full` | BMAD framework | | |
-| `/epic-dev-init` | BMAD framework | | |
-| `/usertestgates` | BMAD framework | | |
-| `digdeep` | Enhanced: `exa`, `perplexity-ask`, etc. | | |
-| `unit-test-fixer` | Python project with tests | | |
-| `api-test-fixer` | API project with tests | | |
-| `database-test-fixer` | Project with DB tests | | |
-| `e2e-test-fixer` | Project with E2E tests | | |
-| `linting-fixer` | Project with linting config | | |
-| `type-error-fixer` | TypeScript/typed project | | |
-| `import-error-fixer` | Any codebase | | |
-| `security-scanner` | Any codebase | | |
-| `pr-workflow-manager` | Git repository | | |
-| `parallel-executor` | None (standalone) | | |
-| `pr-workflow` | Git repository | | |
+### Gate 1: Tool Matrix Complete
+- [ ] All 23 tools listed in validation matrix
+- [ ] Type column populated for all tools (11 commands, 11 agents, 1 skill)
+- [ ] Tier column populated for all tools (6 Standalone, 5 MCP-Enhanced, 3 BMAD-Required, 9 Project-Context)
+- [ ] Prerequisites column populated for all tools
+- **Status:** PASS / FAIL
+- **Verified by:**
+- **Date:**
 
----
+### Gate 2: Clean Environment Tests
+- [ ] Clean Environment Test performed per Section 2
+- [ ] All Standalone tools (6) verified working immediately
+- [ ] All MCP-Enhanced tools (5) show graceful degradation
+- [ ] All BMAD-Required tools (3) show clear error messages
+- [ ] All Project-Context tools (9) show actionable errors
+- **Status:** PASS / FAIL
+- **Verified by:**
+- **Date:**
 
-## 5. Release Checklist
+### Gate 3: Graceful Failure Verification
+- [ ] MCP-Enhanced tools (5) tested without required MCP servers
+- [ ] BMAD-Required tools (3) tested in non-BMAD projects
+- [ ] Project-Context tools (9) tested in incompatible projects
+- [ ] All tools provide clear, actionable error messages
+- [ ] No tools crash or produce confusing stack traces
+- **Status:** PASS / FAIL
+- **Verified by:**
+- **Date:**
 
-### Pre-Release Gates
+### Gate 4: First-Use Test Completed
+- [ ] Minimum 2 cold testers recruited
+- [ ] All testers provided ONLY README.md (no verbal help)
+- [ ] At least 2/3 testers completed installation in <5 minutes
+- [ ] At least 2/3 testers successfully ran first command
+- [ ] All usability issues documented
+- [ ] All usability issues resolved
+- **Status:** PASS / FAIL
+- **Verified by:**
+- **Date:**
 
-- [ ] Clean environment test: PASS
-- [ ] All 11 commands verified
-- [ ] All 11 agents verified
-- [ ] 1 skill verified
-- [ ] First-use test: 2/3 testers successful
-- [ ] Prerequisites audit complete
+### Gate 5: Documentation Quality
 - [ ] README.md includes all required sections
+- [ ] Installation instructions tested and verified
+- [ ] Prerequisites clearly documented for each tool
 - [ ] No hardcoded paths in any tool
 - [ ] LICENSE file present
+- **Status:** PASS / FAIL
+- **Verified by:**
+- **Date:**
 
-### Sign-Off
+### Final Release Sign-Off
+
+All quality gates above must be PASS before proceeding.
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
@@ -170,7 +219,7 @@ Test each tool in clean environment. Mark PASS/FAIL/SKIP (if prerequisites not m
 
 ---
 
-## 6. Known Limitations
+## 5. Known Limitations
 
 Document any known issues that don't block release:
 
@@ -180,11 +229,11 @@ Document any known issues that don't block release:
 
 ---
 
-## Validation History
+## 6. Validation History
 
 | Version | Date | Validator | Result | Notes |
 |---------|------|-----------|--------|-------|
-| 1.0 | 2025-12-15 | | | Initial validation |
+| 1.0 | 2025-12-16 | | | Initial validation |
 
 ---
 

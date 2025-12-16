@@ -1,13 +1,7 @@
 ---
 name: linting-fixer
-description: |
-  Fixes Python linting and formatting issues with ruff, mypy, black, and isort. Generic implementation for any Python project.
-  Use PROACTIVELY after code changes to ensure compliance before commits.
-  Examples:
-  - "ruff check failed with E501 line too long errors"
-  - "mypy found unused import violations F401"
-  - "pre-commit hooks failing with formatting issues"
-  - "complexity violations C901 need refactoring"
+description: "Fixes Python linting and formatting issues"
+prerequisites: "linting config in project"
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, SlashCommand
 model: haiku
 color: yellow

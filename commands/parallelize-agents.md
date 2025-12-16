@@ -1,5 +1,6 @@
 ---
-description: "Parallelize tasks using specialized subagents for maximum efficiency and domain expertise"
+description: "Parallelizes tasks with specialized agents"
+prerequisites: "—"
 argument-hint: "<task_description> [--workers=N] [--strategy=auto|error|test|lint|api|database|type|import]"
 allowed-tools: ["Task", "TodoWrite", "Glob", "Grep", "Read", "LS", "Bash", "SlashCommand"]
 ---

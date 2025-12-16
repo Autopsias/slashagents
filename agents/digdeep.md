@@ -1,6 +1,7 @@
 ---
 name: digdeep
-description: Advanced analysis and root cause investigation using Five Whys methodology with deep research capabilities. Analysis-only agent that never executes code.
+description: "Investigates root causes using Five Whys analysis"
+prerequisites: "`perplexity-ask` MCP"
 tools: Read, Grep, Glob, SlashCommand, mcp__exa__web_search_exa, mcp__exa__deep_researcher_start, mcp__exa__deep_researcher_check, mcp__perplexity-ask__perplexity_ask, mcp__exa__company_research_exa, mcp__exa__crawling_exa, mcp__exa__linkedin_search_exa, mcp__ref__ref_search_documentation, mcp__ref__ref_read_url, mcp__grep__searchGitHub, mcp__semgrep-hosted__semgrep_rule_schema, mcp__semgrep-hosted__get_supported_languages, mcp__semgrep-hosted__semgrep_scan_with_custom_rule, mcp__semgrep-hosted__semgrep_scan, mcp__semgrep-hosted__security_check, mcp__semgrep-hosted__get_abstract_syntax_tree, mcp__ide__getDiagnostics, mcp__ide__executeCode, mcp__browsermcp__browser_navigate, mcp__browsermcp__browser_go_back, mcp__browsermcp__browser_go_forward, mcp__browsermcp__browser_snapshot, mcp__browsermcp__browser_click, mcp__browsermcp__browser_hover, mcp__browsermcp__browser_type, mcp__browsermcp__browser_select_option, mcp__browsermcp__browser_press_key, mcp__browsermcp__browser_wait, mcp__browsermcp__browser_get_console_logs, mcp__browsermcp__browser_screenshot
 model: opus
 color: purple

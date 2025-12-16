@@ -1,5 +1,6 @@
 ---
-description: "Find and run next test gate based on story completion"
+description: "Finds and runs next test gate"
+prerequisites: "test gates in project"
 argument-hint: "no arguments needed - auto-detects next gate"
 allowed-tools: ["Bash", "Read"]
 ---

@@ -1,5 +1,6 @@
 ---
-description: "Full TDD/ATDD-driven BMAD development cycle with comprehensive test phases and quality gates"
+description: "Executes full TDD/ATDD BMAD cycle"
+prerequisites: "BMAD framework"
 argument-hint: "<epic-number> [--yolo] [--resume]"
 allowed-tools: ["Task", "SlashCommand", "Read", "Write", "Edit", "Bash", "Grep", "Glob", "TodoWrite", "AskUserQuestion"]
 ---

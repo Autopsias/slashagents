@@ -1,5 +1,6 @@
 ---
-description: "Generate a detailed continuation prompt for the next session with current context and next steps"
+description: "Generates continuation prompt"
+prerequisites: "—"
 argument-hint: "[optional: focus_area]"
 ---
 

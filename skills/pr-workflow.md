@@ -1,6 +1,6 @@
 ---
-name: pr-workflow
-description: Handle pull request operations - create, status, update, validate, merge, sync. Use when user mentions "PR", "pull request", "merge", "create branch", "check PR status", or any Git workflow terms related to pull requests.
+description: "Manages PR workflows - create, status, merge, sync"
+prerequisites: "`github` MCP (via pr-workflow-manager)"
 ---
 
 # PR Workflow Skill

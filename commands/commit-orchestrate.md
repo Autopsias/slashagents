@@ -1,5 +1,6 @@
 ---
-description: "Orchestrate git commit workflows with parallel quality checks and automated staging"
+description: "Orchestrates git commit workflows"
+prerequisites: "—"
 argument-hint: "[commit_message] [--stage-all] [--skip-hooks] [--quality-first] [--push-after]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---

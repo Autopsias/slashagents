@@ -1,14 +1,7 @@
 ---
 name: import-error-fixer
-description: |
-  Fixes Python import errors, module resolution, and dependency issues for any Python project.
-  Handles ModuleNotFoundError, ImportError, circular imports, and PYTHONPATH configuration.
-  Use PROACTIVELY when import fails or module dependencies break.
-  Examples:
-  - "ModuleNotFoundError: No module named 'requests'"
-  - "ImportError: cannot import name from partially initialized module"
-  - "Circular import between modules detected"
-  - "Module import path configuration issues"
+description: "Fixes Python import and dependency errors"
+prerequisites: "code files in project"
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, LS
 model: haiku
 color: red

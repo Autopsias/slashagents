@@ -1,6 +1,7 @@
 ---
 name: database-test-fixer
-description: Fixes database mock client issues, database fixture failures, stored procedure/function mocks, computed column tests, SQL validation errors, transaction tests. Works with any database system and project schema. Use PROACTIVELY for database client errors, mock data issues, or database integration test failures.
+description: "Fixes database mock and integration test failures"
+prerequisites: "database test files in project"
 tools: Read, Edit, MultiEdit, Bash, Grep, ListMcpResourcesTool, ReadMcpResourceTool, Write, NotebookEdit, mcp__perplexity-ask__perplexity_ask, mcp__exa__web_search_exa, mcp__exa__company_research_exa, mcp__exa__crawling_exa, mcp__exa__linkedin_search_exa, mcp__exa__deep_researcher_start, mcp__exa__deep_researcher_check, mcp__ref__ref_search_documentation, mcp__ref__ref_read_url, mcp__grep__searchGitHub, mcp__ide__getDiagnostics, mcp__ide__executeCode
 model: sonnet
 color: green

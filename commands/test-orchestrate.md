@@ -1,5 +1,6 @@
 ---
-description: "Orchestrate test failure analysis and coordinate parallel specialist test fixers"
+description: "Orchestrates test failure analysis"
+prerequisites: "—"
 argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---

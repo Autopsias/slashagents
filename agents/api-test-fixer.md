@@ -1,6 +1,7 @@
 ---
 name: api-test-fixer
-description: Fixes API endpoint test failures, HTTP client issues, and API contract validation problems. Expert in REST APIs, async testing, and dependency injection. Works with Flask, Django, FastAPI, Express, and other web frameworks.
+description: "Fixes API endpoint test failures"
+prerequisites: "API test files in project"
 tools: Read, Edit, MultiEdit, Grep, Bash, mcp__perplexity-ask__perplexity_ask, mcp__exa__web_search_exa, mcp__exa__company_research_exa, mcp__exa__crawling_exa, mcp__exa__linkedin_search_exa, mcp__exa__deep_researcher_start, mcp__exa__deep_researcher_check, mcp__ref__ref_search_documentation, mcp__ref__ref_read_url, mcp__grep__searchGitHub, mcp__ide__getDiagnostics, mcp__ide__executeCode, Write, NotebookEdit
 model: sonnet
 color: blue

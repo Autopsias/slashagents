@@ -7,6 +7,10 @@ prerequisites: "`github` MCP (via pr-workflow-manager)"
 
 Generic PR management for any Git project. Works with any branching strategy, any base branch, any project structure.
 
+**Prerequisites:** This skill requires the `github` MCP server configured in Claude Code to access GitHub CLI (`gh`) functionality. The pr-workflow-manager agent will verify prerequisites and provide setup instructions if the MCP server is not configured.
+
+---
+
 ## Capabilities
 
 ### Create PR

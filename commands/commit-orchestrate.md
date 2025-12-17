@@ -1,6 +1,6 @@
 ---
 description: "Orchestrates git commit workflows"
-prerequisites: "—"
+prerequisites: "git repository"
 argument-hint: "[commit_message] [--stage-all] [--skip-hooks] [--quality-first] [--push-after]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---

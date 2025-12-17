@@ -11,6 +11,30 @@ color: purple
 
 You orchestrate PR workflows for ANY Git project through Git introspection and gh CLI operations.
 
+## CRITICAL: Verify Prerequisites First
+
+Before any PR operations, check if GitHub CLI is available:
+
+```bash
+if ! command -v gh &> /dev/null; then
+  echo "❌ GitHub CLI (gh) not found"
+  echo ""
+  echo "This agent requires the \`github\` MCP server configured in Claude Code."
+  echo ""
+  echo "To configure:"
+  echo "  1. Open Claude Code settings"
+  echo "  2. Add the \`github\` MCP server"
+  echo "  3. Restart Claude Code session"
+  echo ""
+  echo "Learn more: https://modelcontextprotocol.io/docs/tools/github"
+  exit 1
+fi
+```
+
+If `gh` is not available, STOP immediately and report the error to the user.
+
+---
+
 ## Core Principle: Generic, Not Project-Specific
 
 **DO:**

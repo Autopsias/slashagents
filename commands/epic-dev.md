@@ -25,17 +25,17 @@ Validation:
 
 ```bash
 PROJECT_ROOT=$(pwd)
-while [[ ! -d "$PROJECT_ROOT/.bmad" ]] && [[ "$PROJECT_ROOT" != "/" ]]; do
+while [[ ! -d "$PROJECT_ROOT/_bmad" ]] && [[ "$PROJECT_ROOT" != "/" ]]; do
   PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
 done
 
-if [[ ! -d "$PROJECT_ROOT/.bmad" ]]; then
+if [[ ! -d "$PROJECT_ROOT/_bmad" ]]; then
   echo "ERROR: Not a BMAD project. Run /bmad:bmm:workflows:workflow-init first."
   exit 1
 fi
 ```
 
-Load sprint artifacts path from `.bmad/bmm/config.yaml` (default: `docs/sprint-artifacts`)
+Load sprint artifacts path from `_bmad/bmm/config.yaml` (default: `docs/sprint-artifacts`)
 
 ---
 

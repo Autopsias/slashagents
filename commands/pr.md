@@ -7,6 +7,28 @@ allowed-tools: ["Task", "Bash", "SlashCommand"]
 
 # PR Workflow Helper
 
+## STEP 0: Verify Prerequisites
+
+Check if GitHub CLI (gh) is available:
+
+```bash
+if ! command -v gh &> /dev/null; then
+  echo "❌ GitHub CLI (gh) not found"
+  echo ""
+  echo "This command requires the \`github\` MCP server configured in Claude Code."
+  echo ""
+  echo "To configure:"
+  echo "  1. Open Claude Code settings"
+  echo "  2. Add the \`github\` MCP server"
+  echo "  3. Restart Claude Code session"
+  echo ""
+  echo "Learn more: https://modelcontextprotocol.io/docs/tools/github"
+  exit 1
+fi
+```
+
+---
+
 Understand the user's PR request: "$ARGUMENTS"
 
 ## Default Behavior (No Arguments)

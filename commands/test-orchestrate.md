@@ -1,6 +1,6 @@
 ---
 description: "Orchestrates test failure analysis"
-prerequisites: "—"
+prerequisites: "test files and test results in project"
 argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---

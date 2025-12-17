@@ -14,11 +14,11 @@ Verify this project is ready for epic-dev.
 
 ```bash
 PROJECT_ROOT=$(pwd)
-while [[ ! -d "$PROJECT_ROOT/.bmad" ]] && [[ "$PROJECT_ROOT" != "/" ]]; do
+while [[ ! -d "$PROJECT_ROOT/_bmad" ]] && [[ "$PROJECT_ROOT" != "/" ]]; do
   PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
 done
 
-if [[ -d "$PROJECT_ROOT/.bmad" ]]; then
+if [[ -d "$PROJECT_ROOT/_bmad" ]]; then
   echo "BMAD:$PROJECT_ROOT"
 else
   echo "NONE"

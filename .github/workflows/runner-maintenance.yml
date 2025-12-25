@@ -1,0 +1,126 @@
+# Runner Maintenance Workflow
+# Weekly deep cleanup for self-hosted macOS runners
+# Prevents disk space accumulation and maintains runner health
+
+name: Runner Maintenance
+
+on:
+  schedule:
+    # Every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  deep-clean:
+    name: Deep Runner Cleanup
+    runs-on: [self-hosted, macOS, self-hosted-macos]
+    timeout-minutes: 15
+
+    steps:
+      - name: Homebrew cleanup
+        run: |
+          echo "=== Homebrew Cleanup ==="
+          brew cleanup -s
+          brew autoremove
+
+          # Remove Homebrew cache
+          cache_dir=$(brew --cache)
+          if [ -d "$cache_dir" ]; then
+            echo "Clearing Homebrew cache: $cache_dir"
+            rm -rf "$cache_dir"/*
+          fi
+
+          echo "Homebrew cleanup complete"
+
+      - name: Clear system caches
+        run: |
+          echo "=== System Cache Cleanup ==="
+
+          # Clear user caches (safe to remove)
+          if [ -d ~/Library/Caches ]; then
+            echo "Clearing user caches..."
+            rm -rf ~/Library/Caches/* 2>/dev/null || true
+          fi
+
+          # Clear user logs
+          if [ -d ~/Library/Logs ]; then
+            echo "Clearing user logs..."
+            rm -rf ~/Library/Logs/* 2>/dev/null || true
+          fi
+
+          echo "System cache cleanup complete"
+
+      - name: Clear temporary directories
+        run: |
+          echo "=== Temporary Directory Cleanup ==="
+
+          # Find and remove old GitHub Actions temp files (7+ days)
+          echo "Removing old actions temp files..."
+          find /tmp -name "actions-*" -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+
+          # Find and remove old npm temp files (7+ days)
+          echo "Removing old npm temp files..."
+          find /tmp -name "npm-*" -mtime +7 -exec rm -rf {} + 2>/dev/null || true
+
+          # Clear runner temp directory
+          if [ -d "${RUNNER_TEMP}" ]; then
+            echo "Clearing runner temp: ${RUNNER_TEMP}"
+            rm -rf "${RUNNER_TEMP}"/* 2>/dev/null || true
+          fi
+
+          echo "Temporary directory cleanup complete"
+
+      - name: Clean runner work directory
+        run: |
+          echo "=== Runner Work Directory Cleanup ==="
+
+          # Get runner root (parent of _work)
+          runner_root="${GITHUB_WORKSPACE%/*/*}"
+
+          # Clean old tool installations (keep last 2 Node.js versions)
+          if [ -d "$runner_root/_tool" ]; then
+            echo "Tool cache contents:"
+            du -sh "$runner_root/_tool"/* 2>/dev/null || true
+          fi
+
+          # Clean old actions cache
+          if [ -d "$runner_root/_actions" ]; then
+            echo "Actions cache contents:"
+            du -sh "$runner_root/_actions"/* 2>/dev/null || true
+          fi
+
+          echo "Work directory cleanup complete"
+
+      - name: Report disk usage
+        if: always()
+        run: |
+          echo "=== Disk Usage Report ==="
+          echo ""
+          echo "Filesystem usage:"
+          df -h / | tail -1
+          echo ""
+
+          # Get runner root
+          runner_root="${GITHUB_WORKSPACE%/*/*}"
+
+          echo "Runner directory sizes:"
+          du -sh "$runner_root" 2>/dev/null || true
+          du -sh "$runner_root/_work" 2>/dev/null || true
+          du -sh "$runner_root/_tool" 2>/dev/null || true
+          du -sh "$runner_root/_actions" 2>/dev/null || true
+          echo ""
+
+          # Calculate free space percentage
+          free_pct=$(df -h / | tail -1 | awk '{print $5}' | tr -d '%')
+          used_pct=$((100 - free_pct))
+
+          if [ $used_pct -gt 80 ]; then
+            echo "⚠️  WARNING: Disk usage is ${used_pct}% - consider manual cleanup"
+          elif [ $used_pct -gt 90 ]; then
+            echo "🚨 CRITICAL: Disk usage is ${used_pct}% - immediate cleanup required"
+            exit 1
+          else
+            echo "✅ Disk usage is ${used_pct}% - healthy"
+          fi
+
+          echo "=== Maintenance Complete ==="

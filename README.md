@@ -84,6 +84,19 @@ Analyzes CI failures, spawns parallel agents, and fixes issues automatically. *N
 /ci-orchestrate
 ```
 
+## CI/CD
+
+This project uses self-hosted macOS runners for continuous integration. See [docs/SELF_HOSTED_RUNNERS.md](docs/SELF_HOSTED_RUNNERS.md) for runner setup and maintenance instructions.
+
+**Pipeline:** `.github/workflows/docs-ci.yml`
+- Markdown linting (markdownlint-cli2)
+- Link validation (markdown-link-check)
+- Shell script linting (ShellCheck)
+- File structure validation
+- Content validation (frontmatter, hardcoded paths)
+
+**Maintenance:** Weekly automated cleanup via `runner-maintenance.yml`
+
 ## Commands Reference
 
 Commands are organized by workflow moment to help you quickly find the right tool for your task.

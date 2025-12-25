@@ -11,6 +11,7 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 ## 🚨 CRITICAL ORCHESTRATION CONSTRAINTS 🚨
 
 **YOU ARE A PURE ORCHESTRATOR - DELEGATION ONLY**
+
 - ❌ NEVER execute workflows directly - you are a pure orchestrator
 - ❌ NEVER use Edit, Write, MultiEdit tools yourself
 - ❌ NEVER implement story tasks or fix code yourself
@@ -19,11 +20,13 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 - ✅ Your role is ONLY to: read state, delegate tasks, verify completion, update session
 
 **GUARD RAIL CHECK**: Before ANY action ask yourself:
+
 - "Am I about to do work directly?" → If YES: STOP and delegate via Task instead
 - "Am I using Read/Bash to check state?" → OK to proceed
 - "Am I using Task tool to spawn a subagent?" → Correct approach
 
 **SUBAGENT EXECUTION PATTERN**: Each Task call spawns an independent subagent that:
+
 - Has its own context window (preserves main agent context)
 - Executes autonomously until completion
 - Returns results to the orchestrator
@@ -33,6 +36,7 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 ## CRITICAL EXECUTION CONSTRAINTS
 
 **SEQUENTIAL EXECUTION ONLY** - Each phase MUST complete before the next starts:
+
 - Never invoke multiple BMAD workflows in parallel
 - Wait for each Task to complete before proceeding
 - This ensures proper context flow through the 8-phase workflow
@@ -40,17 +44,27 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 **MODEL STRATEGY** - Different models for different phases:
 
 | # | Phase | Model | Rationale |
-|---|-------|-------|-----------|
+
+| --- | ------- | ------- | ----------- |
+
 | 1 | create-story | `opus` | Deep understanding for quality story creation |
+
 | 2 | validate-create-story | `sonnet` | Fast feedback loop for validation iterations |
+
 | 3 | testarch-atdd | `opus` | Quality test generation requires deep understanding |
+
 | 4 | dev-story | `sonnet` | Balanced speed/quality for implementation |
+
 | 5 | code-review | `opus` | Thorough adversarial review |
+
 | 6 | testarch-automate | `sonnet` | Iterative test expansion |
+
 | 7 | testarch-test-review | `haiku` | Rule-based quality validation (fast) |
+
 | 8 | testarch-trace | `opus` | Quality gate decision requires careful analysis |
 
 **PURE ORCHESTRATION** - This command:
+
 - Invokes existing BMAD workflows via Task tool with model specifications
 - Reads/writes sprint-status.yaml for state management
 - Never directly modifies story implementation files (workflows do that)
@@ -60,11 +74,13 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 ## STEP 1: Parse Arguments
 
 Parse "$ARGUMENTS" to extract:
+
 - **epic_number** (required): First positional argument (e.g., "2" for Epic 2)
 - **--resume**: Continue from last incomplete story/phase
 - **--yolo**: Skip user confirmation pauses between stories
 
 **Validation:**
+
 - epic_number must be a positive integer
 - If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume]"
 
@@ -82,7 +98,8 @@ if [[ ! -d "$PROJECT_ROOT/_bmad" ]]; then
   echo "ERROR: Not a BMAD project. Run /bmad:bmm:workflows:workflow-init first."
   exit 1
 fi
-```
+
+```text
 
 Load sprint artifacts path from `_bmad/bmm/config.yaml` (default: `docs/sprint-artifacts`)
 
@@ -93,15 +110,18 @@ Load sprint artifacts path from `_bmad/bmm/config.yaml` (default: `docs/sprint-a
 Read `{sprint_artifacts}/sprint-status.yaml`
 
 If not found:
+
 - Output: "Sprint status file not found. Running sprint-planning workflow first..."
 - Run: `SlashCommand(command="/bmad:bmm:workflows:sprint-planning")`
 
 Find stories for epic {epic_number}:
+
 - Pattern: `{epic_num}-{story_num}-{story_title}`
 - Filter: status NOT "done"
 - Order by story number
 
 If no pending stories:
+
 - Output: "All stories in Epic {epic_num} complete!"
 - HALT
 
@@ -140,7 +160,8 @@ epic_dev_session:
   # Timestamps
   started: "{timestamp}"
   last_updated: "{timestamp}"
-```
+
+```text
 
 **PHASE VALUES:**
 - `starting` - Initial state
@@ -185,10 +206,12 @@ For each pending story:
 
 **Execute when:** `story.status == "backlog"`
 
-```
+```text
+
 Output: "=== [Phase 1/8] Creating story: {story_key} (opus) ==="
 
 Update session:
+
   - phase: "create_story"
   - last_updated: {timestamp}
 
@@ -226,14 +249,17 @@ Execute immediately and autonomously. Do not ask for confirmation."
 )
 
 Verify:
+
 - Story file exists at {sprint_artifacts}/stories/{story_key}.md
 - Story status updated in sprint-status.yaml
 
 Update session:
+
   - phase: "create_complete"
 
 PROCEED TO PHASE 2
-```
+
+```text
 
 ---
 
@@ -243,7 +269,8 @@ PROCEED TO PHASE 2
 
 This phase validates the story file for completeness using tier-based issue classification.
 
-```
+```text
+
 INITIALIZE:
   validation_iteration = session.validation_iteration or 0
   max_validations = 3
@@ -253,6 +280,7 @@ WHILE validation_iteration < max_validations:
   Output: "=== [Phase 2/8] Validation iteration {validation_iteration + 1} for: {story_key} (sonnet) ==="
 
   Update session:
+
     - phase: "validation"
     - validation_iteration: {validation_iteration}
     - last_updated: {timestamp}
@@ -305,6 +333,7 @@ Execute immediately and autonomously. Return ONLY the JSON result."
   IF pass_rate == 100 OR total_issues == 0:
     Output: "Story validation PASSED (100%)"
     Update session:
+
       - phase: "validation_complete"
       - validation_last_pass_rate: 100
     Write sprint-status.yaml
@@ -372,6 +401,7 @@ Execute immediately and autonomously. Do not ask for confirmation."
     ELSE IF user_decision == "Skip validation":
       Output: "Skipping remaining validation. Proceeding to ATDD phase..."
       Update session:
+
         - phase: "validation_complete"
       Write sprint-status.yaml
       BREAK from loop
@@ -400,7 +430,8 @@ IF validation_iteration >= max_validations AND pass_rate < 100:
   )
 
   Handle escalation choice accordingly
-```
+
+```text
 
 ---
 
@@ -410,10 +441,12 @@ IF validation_iteration >= max_validations AND pass_rate < 100:
 
 This phase generates FAILING acceptance tests before implementation (TDD RED phase).
 
-```
+```text
+
 Output: "=== [Phase 3/8] TDD RED Phase - Generating acceptance tests: {story_key} (opus) ==="
 
 Update session:
+
   - phase: "testarch_atdd"
   - tdd_phase: "red"
   - last_updated: {timestamp}
@@ -462,13 +495,18 @@ Execute immediately and autonomously."
 Parse ATDD output
 
 Verify tests are FAILING (optional quick validation):
+
 ```bash
+
 # Run tests to confirm RED state
+
 cd {project_root}
 pnpm test --run 2>&1 | tail -20  # Should show failures
-```
+
+```text
 
 Update session:
+
   - phase: "atdd_complete"
   - atdd_checklist_file: {checklist_file}
   - atdd_tests_count: {tests_created}
@@ -480,7 +518,8 @@ Output: "ATDD tests generated: {tests_created} tests (RED - all failing as expec
 Output: "Checklist: {checklist_file}"
 
 PROCEED TO PHASE 4
-```
+
+```text
 
 ---
 
@@ -490,10 +529,12 @@ PROCEED TO PHASE 4
 
 This phase implements the story to make acceptance tests pass (TDD GREEN phase).
 
-```
+```text
+
 Output: "=== [Phase 4/8] TDD GREEN Phase - Implementing story: {story_key} (sonnet) ==="
 
 Update session:
+
   - phase: "dev_story"
   - tdd_phase: "green"
   - last_updated: {timestamp}
@@ -534,11 +575,13 @@ Execute immediately and autonomously. Do not stop until all tests pass."
 )
 
 Verify implementation:
+
 - All ATDD tests passing
 - pnpm prepush passes (or equivalent validation)
 - Story status updated to "review"
 
 Update session:
+
   - phase: "dev_complete"
   - tdd_phase: "complete"
 
@@ -547,7 +590,8 @@ Write sprint-status.yaml
 Output: "Implementation complete. All ATDD tests passing (GREEN)."
 
 PROCEED TO PHASE 5
-```
+
+```text
 
 ---
 
@@ -557,7 +601,8 @@ PROCEED TO PHASE 5
 
 This phase performs adversarial code review finding 3-10 specific issues.
 
-```
+```text
+
 INITIALIZE:
   review_iteration = session.review_iteration or 0
   max_reviews = 3
@@ -567,6 +612,7 @@ WHILE review_iteration < max_reviews:
   Output: "=== [Phase 5/8] Code Review iteration {review_iteration + 1}: {story_key} (opus) ==="
 
   Update session:
+
     - phase: "code_review"
     - review_iteration: {review_iteration}
     - last_updated: {timestamp}
@@ -714,12 +760,14 @@ IF review_iteration >= max_reviews:
   Handle escalation
 
 Update session:
+
   - phase: "review_complete"
 
 Write sprint-status.yaml
 
 PROCEED TO PHASE 6
-```
+
+```text
 
 ---
 
@@ -729,10 +777,12 @@ PROCEED TO PHASE 6
 
 This phase expands test coverage beyond the initial ATDD tests.
 
-```
+```text
+
 Output: "=== [Phase 6/8] Expanding test coverage: {story_key} (sonnet) ==="
 
 Update session:
+
   - phase: "testarch_automate"
   - last_updated: {timestamp}
 
@@ -782,6 +832,7 @@ Execute immediately and autonomously."
 Parse automation output
 
 Update session:
+
   - phase: "automate_complete"
 
 Write sprint-status.yaml
@@ -790,7 +841,8 @@ Output: "Test automation complete. Added {tests_added} tests."
 Output: "Coverage: {coverage_before}% -> {coverage_after}%"
 
 PROCEED TO PHASE 7
-```
+
+```text
 
 ---
 
@@ -800,10 +852,12 @@ PROCEED TO PHASE 7
 
 This phase reviews test quality against best practices.
 
-```
+```text
+
 Output: "=== [Phase 7/8] Reviewing test quality: {story_key} (haiku) ==="
 
 Update session:
+
   - phase: "testarch_test_review"
   - last_updated: {timestamp}
 
@@ -885,6 +939,7 @@ Execute immediately and autonomously."
     )
 
 Update session:
+
   - phase: "test_review_complete"
 
 Write sprint-status.yaml
@@ -892,7 +947,8 @@ Write sprint-status.yaml
 Output: "Test quality review complete. Score: {quality_score}%"
 
 PROCEED TO PHASE 8
-```
+
+```text
 
 ---
 
@@ -902,10 +958,12 @@ PROCEED TO PHASE 8
 
 This phase generates traceability matrix and makes quality gate decision.
 
-```
+```text
+
 Output: "=== [Phase 8/8] Quality Gate Decision: {story_key} (opus) ==="
 
 Update session:
+
   - phase: "testarch_trace"
   - last_updated: {timestamp}
 
@@ -958,7 +1016,9 @@ Execute immediately and autonomously."
 Parse gate decision
 
 # ═══════════════════════════════════════════════════════════════════════════
+
 # QUALITY GATE DECISION HANDLING
+
 # ═══════════════════════════════════════════════════════════════════════════
 
 Output:
@@ -976,6 +1036,7 @@ IF decision == "PASS":
   Output: "Quality Gate: PASS - Story ready for completion"
 
   Update session:
+
     - phase: "complete"
     - gate_decision: "PASS"
     - p0_coverage: {p0_coverage}
@@ -989,6 +1050,7 @@ ELSE IF decision == "CONCERNS":
   Output: "Quality Gate: CONCERNS - Minor gaps detected"
 
   Update session:
+
     - phase: "gate_decision"
     - gate_decision: "CONCERNS"
 
@@ -1014,6 +1076,7 @@ ELSE IF decision == "FAIL":
     Output: "  - {gap.ac_id}: {gap.reason}"
 
   Update session:
+
     - phase: "gate_decision"
     - gate_decision: "FAIL"
 
@@ -1046,6 +1109,7 @@ ELSE IF decision == "FAIL":
 
     # Mark as WAIVED
     Update session:
+
       - gate_decision: "WAIVED"
       - waiver_reason: {waiver_info}
 
@@ -1053,7 +1117,8 @@ ELSE IF decision == "FAIL":
 
   ELSE:
     Handle fail_decision accordingly
-```
+
+```text
 
 ---
 
@@ -1061,11 +1126,14 @@ ELSE IF decision == "FAIL":
 
 When user chooses "Loop back to dev" after gate FAIL or CONCERNS:
 
-```
+```text
+
 Output: "Looping back to Phase 4 (dev-story) to address gaps..."
 
 # Reset tracking for phases 4-8
+
 Update session:
+
   - phase: "dev_story"
   - review_iteration: 0
   - gate_iteration: {gate_iteration + 1}
@@ -1074,6 +1142,7 @@ Update session:
 Write sprint-status.yaml
 
 # Provide gap context to dev-story
+
 Task(
   subagent_type="parallel-executor",
   model="sonnet",
@@ -1089,6 +1158,7 @@ Task(
 
 **GAPS TO ADDRESS:**
 {FOR each gap in gaps:}
+
 - {gap.ac_id}: {gap.reason}
 {END FOR}
 
@@ -1109,19 +1179,25 @@ Execute immediately and autonomously."
 )
 
 # Continue through phases 5-8 again
+
 PROCEED TO PHASE 5
-```
+
+```text
 
 ---
 
 ## STEP 6: Story Completion
 
-```
+```text
+
 # Mark story complete
+
 Update sprint-status.yaml:
+
   - story status: "done"
 
 # Clear session state
+
 Clear epic_dev_session (or update for next story)
 
 Output:
@@ -1145,13 +1221,15 @@ IF NOT --yolo AND more_stories_remaining:
 
   IF next_decision == "Stop":
     HALT
-```
+
+```text
 
 ---
 
 ## STEP 7: Epic Completion
 
-```
+```text
+
 Output:
 ════════════════════════════════════════════════════════════════════════════════
 EPIC {epic_num} COMPLETE!
@@ -1161,10 +1239,12 @@ Total phases executed: {count * 8}
 All quality gates: {summary}
 
 Next steps:
+
 - Retrospective: /bmad:bmm:workflows:retrospective
 - Next epic: /epic-dev-full {next_epic_num}
 ════════════════════════════════════════════════════════════════════════════════
-```
+
+```text
 
 ---
 
@@ -1172,7 +1252,8 @@ Next steps:
 
 On any workflow failure:
 
-```
+```text
+
 1. Capture error output
 2. Update session:
    - phase: "error"
@@ -1182,7 +1263,7 @@ On any workflow failure:
 4. Display error with phase context:
    Output: "ERROR in Phase {current_phase}: {error_message}"
 
-5. Offer recovery options:
+1. Offer recovery options:
    error_decision = AskUserQuestion(
      question: "How to handle this error?",
      header: "Error Recovery",
@@ -1194,12 +1275,13 @@ On any workflow failure:
      ]
    )
 
-6. Handle recovery choice:
+1. Handle recovery choice:
    - Retry: Reset phase state, re-execute
    - Skip phase: Only allowed for non-critical phases (6, 7)
    - Skip story: Mark skipped in sprint-status, continue loop
    - Stop: HALT with resume instructions
-```
+
+```text
 
 ---
 

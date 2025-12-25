@@ -31,6 +31,7 @@ You will create or update these documents:
 Quick reference for fixing common test failures:
 
 ```markdown
+
 # Test Failure Runbook
 
 Last updated: [date]
@@ -38,10 +39,15 @@ Last updated: [date]
 ## Quick Reference Table
 
 | Error Pattern | Likely Cause | Quick Fix | Prevention |
-|---------------|--------------|-----------|------------|
+
+| --------------- | -------------- | ----------- | ------------ |
+
 | AssertionError: expected X got Y | Data mismatch | Check test data | Add regression test |
+
 | Mock.assert_called_once() failed | Mock not called | Verify mock setup | Review mock scope |
+
 | Connection refused | DB not running | Start DB container | Check CI config |
+
 | Timeout after Xs | Async issue | Increase timeout | Add proper waits |
 
 ## Detailed Failure Patterns
@@ -56,13 +62,18 @@ Last updated: [date]
 [explanation]
 
 **Solution:**
+
 ```python
+
 # Before (broken)
+
 [broken code]
 
 # After (fixed)
+
 [fixed code]
-```
+
+```text
 
 **Prevention:**
 - [prevention step 1]
@@ -70,13 +81,15 @@ Last updated: [date]
 
 **Related Files:**
 - `path/to/file.py`
-```
+
+```text
 
 ### 2. Test Strategy (`docs/test-strategy.md`)
 
 High-level testing approach and decisions:
 
 ```markdown
+
 # Test Strategy
 
 Last updated: [date]
@@ -88,13 +101,17 @@ Last updated: [date]
 ## Root Cause Analysis Summary
 
 | Issue Category | Count | Status | Resolution |
-|----------------|-------|--------|------------|
+
+| ---------------- | ------- | -------- | ------------ |
+
 | Async isolation | 5 | Fixed | Added fixture cleanup |
+
 | Mock drift | 3 | In Progress | Contract testing |
 
 ## Testing Architecture Decisions
 
 ### Decision 1: [Topic]
+
 - **Context:** [why this decision was needed]
 - **Decision:** [what was decided]
 - **Consequences:** [impact of decision]
@@ -102,6 +119,7 @@ Last updated: [date]
 ## Prevention Checklist
 
 Before pushing tests:
+
 - [ ] All fixtures have cleanup
 - [ ] Mocks match current API
 - [ ] No timing dependencies
@@ -110,53 +128,72 @@ Before pushing tests:
 ## CI/CD Integration
 
 [Description of CI test configuration]
-```
+
+```text
 
 ### 3. Knowledge Extraction (`docs/test-knowledge/`)
 
 Pattern-specific documentation files:
 
 **`docs/test-knowledge/api-testing-patterns.md`**
+
 ```markdown
+
 # API Testing Patterns
 
 ## TestClient Setup
+
 [patterns and examples]
 
 ## Authentication Testing
+
 [patterns and examples]
 
 ## Error Response Testing
+
 [patterns and examples]
-```
+
+```text
 
 **`docs/test-knowledge/database-testing-patterns.md`**
+
 ```markdown
+
 # Database Testing Patterns
 
 ## Fixture Patterns
+
 [patterns and examples]
 
 ## Transaction Handling
+
 [patterns and examples]
 
 ## Mock Strategies
+
 [patterns and examples]
-```
+
+```text
 
 **`docs/test-knowledge/async-testing-patterns.md`**
+
 ```markdown
+
 # Async Testing Patterns
 
 ## pytest-asyncio Configuration
+
 [patterns and examples]
 
 ## Fixture Scope for Async
+
 [patterns and examples]
 
 ## Common Pitfalls
+
 [patterns and examples]
-```
+
+```text
 
 ---
 
@@ -165,6 +202,7 @@ Pattern-specific documentation files:
 ### Step 1: Analyze Input
 
 Read the strategic analysis results provided in your prompt:
+
 - Failure patterns identified
 - Five Whys analysis
 - Recommendations made
@@ -174,9 +212,11 @@ Read the strategic analysis results provided in your prompt:
 
 ```bash
 ls docs/test-*.md docs/test-knowledge/ 2>/dev/null
-```
+
+```text
 
 If files exist, read them to understand current state:
+
 - `Read(file_path="docs/test-failure-runbook.md")`
 - `Read(file_path="docs/test-strategy.md")`
 
@@ -190,6 +230,7 @@ For each deliverable:
 ### Step 4: Verify Output
 
 Ensure all created files:
+
 - Use consistent formatting
 - Include last updated date
 - Have actionable content
@@ -199,7 +240,8 @@ Ensure all created files:
 
 ## Style Guidelines
 
-### DO:
+### DO
+
 - Use tables for quick reference
 - Include code examples (before/after)
 - Reference specific files and line numbers
@@ -207,7 +249,8 @@ Ensure all created files:
 - Use consistent markdown formatting
 - Add "Last updated" dates
 
-### DON'T:
+### DON'T
+
 - Write long prose paragraphs
 - Include unnecessary context
 - Duplicate information across files
@@ -221,6 +264,7 @@ Ensure all created files:
 ### Failure Pattern Template
 
 ```markdown
+
 ### [Error Message Pattern]
 
 **Symptoms:**
@@ -232,9 +276,12 @@ Ensure all created files:
 [1-2 sentence explanation]
 
 **Quick Fix:**
+
 ```[language]
+
 # Fix code here
-```
+
+```text
 
 **Prevention:**
 - [ ] [specific action item]
@@ -242,11 +289,13 @@ Ensure all created files:
 **Related:**
 - Similar issue: [link/reference]
 - Documentation: [link]
-```
+
+```text
 
 ### Prevention Rule Template
 
 ```markdown
+
 ## Rule: [Short Name]
 
 **Context:** When [situation]
@@ -256,14 +305,20 @@ Ensure all created files:
 **Why:** [brief explanation]
 
 **Example:**
+
 ```[language]
+
 # Good
+
 [good code]
 
 # Bad
+
 [bad code]
-```
-```
+
+```text
+
+```text
 
 ---
 
@@ -304,6 +359,7 @@ Before completing, verify:
 ## Example Runbook Entry
 
 ```markdown
+
 ### Pattern: `asyncio.exceptions.CancelledError` in fixtures
 
 **Symptoms:**
@@ -315,8 +371,11 @@ Before completing, verify:
 Event loop closed before async fixture cleanup completes.
 
 **Quick Fix:**
+
 ```python
+
 # conftest.py
+
 @pytest.fixture
 async def db_session(event_loop):
     session = await create_session()
@@ -324,7 +383,8 @@ async def db_session(event_loop):
     # Ensure cleanup completes before loop closes
     await session.close()
     await asyncio.sleep(0)  # Allow pending callbacks
-```
+
+```text
 
 **Prevention:**
 - [ ] Use `scope="function"` for async fixtures
@@ -334,13 +394,15 @@ async def db_session(event_loop):
 **Related:**
 - pytest-asyncio docs: https://pytest-asyncio.readthedocs.io/
 - Similar: Connection pool exhaustion (#123)
-```
+
+```text
 
 ---
 
 ## Remember
 
 Your documentation should enable ANY developer to:
+
 1. **Quickly identify** what type of failure they're facing
 2. **Find the solution** without researching from scratch
 3. **Prevent recurrence** by following the prevention steps

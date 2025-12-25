@@ -5,10 +5,13 @@ argument-hint: "[commit_message] [--stage-all] [--skip-hooks] [--quality-first] 
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---
 
-# ⚠️ GENERAL-PURPOSE COMMAND - Works with any project
-# Tools (ruff, mypy, pytest) are detected dynamically from system PATH, venv, or .venv
-# Source directories are detected dynamically (apps/api/src, src, lib, .)
-# Override with COMMIT_RUFF_CMD, COMMIT_MYPY_CMD, COMMIT_SRC_DIR environment variables
+## ⚠️ GENERAL-PURPOSE COMMAND - Works with any project
+
+Tools (ruff, mypy, pytest) are detected dynamically from system PATH, venv, or .venv
+
+Source directories are detected dynamically (apps/api/src, src, lib, .)
+
+Override with COMMIT_RUFF_CMD, COMMIT_MYPY_CMD, COMMIT_SRC_DIR environment variables
 
 You must now execute the following git commit orchestration procedure for: "$ARGUMENTS"
 
@@ -16,6 +19,7 @@ You must now execute the following git commit orchestration procedure for: "$ARG
 
 **STEP 1: Parse Arguments**
 Parse "$ARGUMENTS" to extract:
+
 - Commit message or "auto-generate"
 - --stage-all flag (stage all changes)
 - --skip-hooks flag (bypass pre-commit hooks)
@@ -24,23 +28,28 @@ Parse "$ARGUMENTS" to extract:
 
 **STEP 2: Pre-Commit Analysis**
 Use git commands to analyze repository state:
+
 ```bash
+
 # Check repository status
+
 git status --porcelain
 git diff --name-only  # Unstaged changes
 git diff --cached --name-only  # Staged changes
 git stash list  # Check for stashed changes
 
 # Check for potential commit blockers
+
 git log --oneline -5  # Recent commits for message pattern
 git branch --show-current  # Current branch
-```
+
+```text
 
 **STEP 3: Quality Issue Detection & Agent Mapping**
 
 **CODE QUALITY ISSUES:**
 - Linting violations (ruff errors) → linting-fixer
-- Formatting inconsistencies → linting-fixer  
+- Formatting inconsistencies → linting-fixer
 - Import organization problems → import-error-fixer
 - Type checking failures → type-error-fixer
 
@@ -63,12 +72,17 @@ git branch --show-current  # Current branch
 **STEP 4: Create Parallel Quality Work Packages**
 
 **For PRE_COMMIT_QUALITY:**
+
 ```bash
+
 # ============================================
+
 # DYNAMIC TOOL DETECTION (Project-Agnostic)
+
 # ============================================
 
 # Detect ruff command (allow env override)
+
 if [[ -n "$COMMIT_RUFF_CMD" ]]; then
   RUFF_CMD="$COMMIT_RUFF_CMD"
   echo "📦 Using override ruff: $RUFF_CMD"
@@ -86,6 +100,7 @@ else
 fi
 
 # Detect mypy command (allow env override)
+
 if [[ -n "$COMMIT_MYPY_CMD" ]]; then
   MYPY_CMD="$COMMIT_MYPY_CMD"
   echo "📦 Using override mypy: $MYPY_CMD"
@@ -103,6 +118,7 @@ else
 fi
 
 # Detect source directory (allow env override)
+
 if [[ -n "$COMMIT_SRC_DIR" ]] && [[ -d "$COMMIT_SRC_DIR" ]]; then
   SRC_DIR="$COMMIT_SRC_DIR"
   echo "📁 Using override source dir: $SRC_DIR"
@@ -118,6 +134,7 @@ else
 fi
 
 # Detect quality issues that would block commit
+
 if [[ -n "$RUFF_CMD" ]]; then
   $RUFF_CMD check . --output-format=concise 2>/dev/null | head -20
 fi
@@ -125,11 +142,15 @@ if [[ -n "$MYPY_CMD" ]] && [[ -n "$SRC_DIR" ]]; then
   $MYPY_CMD "$SRC_DIR" --show-error-codes 2>/dev/null | head -20
 fi
 git secrets --scan 2>/dev/null || true  # Check for secrets (if available)
-```
+
+```text
 
 **For TEST_VALIDATION:**
+
 ```bash
+
 # Detect pytest command
+
 if command -v pytest &> /dev/null; then
   PYTEST_CMD="pytest"
 elif [[ -f "./venv/bin/pytest" ]]; then
@@ -143,6 +164,7 @@ else
 fi
 
 # Detect test directory
+
 TEST_DIR=""
 for dir in "tests" "test" "apps/api/tests"; do
   if [[ -d "$dir" ]]; then
@@ -152,21 +174,30 @@ for dir in "tests" "test" "apps/api/tests"; do
 done
 
 # Run critical tests before commit
+
 if [[ -n "$TEST_DIR" ]]; then
   $PYTEST_CMD "$TEST_DIR" -x --tb=short 2>/dev/null | head -20
 else
   echo "⚠️ No test directory found - skipping test validation"
 fi
+
 # Check for test file changes
+
 git diff --name-only | grep -E "test_|_test\.py|\.test\." || true
-```
+
+```text
 
 **For SECURITY_SCANNING:**
+
 ```bash
+
 # Security pre-commit checks
+
 find . -name "*.py" -exec grep -l "password\|secret\|key\|token" {} \; | head -10
+
 # Check for common security issues
-```
+
+```text
 
 **STEP 5: EXECUTE PARALLEL QUALITY AGENTS**
 🚨 CRITICAL: ALWAYS USE BATCH DISPATCH FOR PARALLEL EXECUTION 🚨
@@ -174,6 +205,7 @@ find . -name "*.py" -exec grep -l "password\|secret\|key\|token" {} \; | head -1
 MANDATORY REQUIREMENT: Launch multiple Task agents simultaneously using batch dispatch in a SINGLE response.
 
 EXECUTION METHOD - Use multiple Task tool calls in ONE message:
+
 - Task(subagent_type="linting-fixer", description="Fix pre-commit linting issues", prompt="Detailed linting fix instructions")
 - Task(subagent_type="security-scanner", description="Scan for commit security issues", prompt="Detailed security scan instructions")
 - Task(subagent_type="unit-test-fixer", description="Fix failing tests before commit", prompt="Detailed test fix instructions")
@@ -183,7 +215,9 @@ EXECUTION METHOD - Use multiple Task tool calls in ONE message:
 ⚠️ CRITICAL: NEVER execute Task calls sequentially - they MUST all be in a single message batch
 
 Each commit quality agent prompt must include:
-```
+
+```text
+
 Commit Quality Task: [Agent Type] - Pre-Commit Fix
 
 Context: You are part of parallel commit orchestration for: $ARGUMENTS
@@ -194,6 +228,7 @@ Your Task: Ensure commit quality in your domain before staging
 Constraints: Only fix issues in staged/to-be-staged files
 
 Critical Commit Requirements:
+
 - All fixes must maintain code functionality
 - No breaking changes during commit quality fixes
 - Security fixes must not expose sensitive data
@@ -201,13 +236,15 @@ Critical Commit Requirements:
 - All changes must be automatically committable
 
 Pre-Commit Workflow:
+
 1. Identify quality issues in commit files
-2. Apply fixes that maintain code integrity  
+2. Apply fixes that maintain code integrity
 3. Verify fixes don't break functionality
 4. Ensure files are ready for staging
 5. Report quality status for commit readiness
 
 Output Format:
+
 - Summary of pre-commit quality fixes completed
 - Files modified and specific issues resolved
 - Quality gates passed/failed in your domain
@@ -215,7 +252,8 @@ Output Format:
 - Any blockers preventing commit
 
 Execute your commit quality fixes autonomously and report staging readiness.
-```
+
+```text
 
 **COMMIT QUALITY SPECIALIST MAPPING:**
 - linting-fixer: Code style, ruff/mypy pre-commit fixes
@@ -231,13 +269,16 @@ Execute your commit quality fixes autonomously and report staging readiness.
 **STEP 6: Intelligent Commit Message Generation & Execution**
 
 ## Best Practices Reference
+
 Following Conventional Commits (conventionalcommits.org) and Git project standards:
+
 - **Subject**: Imperative mood, ≤50 chars, no period, format: `<type>[scope]: <description>`
 - **Body**: Explain WHY (not HOW), wrap at 72 chars, separate from subject with blank line
 - **Footer**: Reference issues (`Closes #123`), note breaking changes
 - **Types**: feat, fix, docs, style, refactor, perf, test, build, ci, chore
 
 ## Good vs Bad Examples
+
 ❌ BAD: "fix: address quality issues in auth.py" (vague, focuses on file not change)
 ✅ GOOD: "feat(auth): implement JWT refresh token endpoint" (specific, clear type/scope)
 
@@ -247,10 +288,13 @@ Following Conventional Commits (conventionalcommits.org) and Git project standar
 After quality agents complete their fixes:
 
 ```bash
+
 # Stage quality-fixed files
+
 git add -A  # or specific files based on quality fixes
 
 # INTELLIGENT COMMIT MESSAGE GENERATION
+
 if [[ -z "$USER_PROVIDED_MESSAGE" ]]; then
   echo "🤖 Generating intelligent commit message..."
 
@@ -273,14 +317,14 @@ if [[ -z "$USER_PROVIDED_MESSAGE" ]]; then
     TYPE="ci"
   elif [ "$ADDED_FILES" -gt 0 ] && [ "$TEST_FILES" -gt 0 ]; then
     TYPE="feat"  # New files + tests = feature
-  elif [ "$MODIFIED_FILES" -gt 0 ] && git diff --cached | grep -qE "^\+.*def |^\+.*class "; then
+  elif [ "$MODIFIED_FILES" -gt 0 ] && git diff --cached | grep -qE "^\+._def |^\+._class "; then
     # New functions/classes without breaking existing = likely feature
-    if git diff --cached | grep -qE "^\-.*def |^\-.*class "; then
+    if git diff --cached | grep -qE "^\-._def |^\-._class "; then
       TYPE="refactor"  # Modifying existing functions/classes
     else
       TYPE="feat"
     fi
-  elif git diff --cached | grep -qE "^\+.*#.*fix|^\+.*#.*bug"; then
+  elif git diff --cached | grep -qE "^\+._#._fix|^\+._#._bug"; then
     TYPE="fix"
   elif git diff --cached | grep -qE "performance|optimize|speed"; then
     TYPE="perf"
@@ -309,7 +353,7 @@ if [[ -z "$USER_PROVIDED_MESSAGE" ]]; then
 
   # Generate meaningful subject from code analysis
   # Use git diff to find key changes (function names, class names, imports)
-  KEY_CHANGES=$(git diff --cached | grep -E "^\+.*def |^\+.*class |^\+.*import " | head -3 | sed 's/^+//' | sed 's/def //' | sed 's/class //' | sed 's/import //' | tr '\n' ', ' | sed 's/,$//')
+  KEY_CHANGES=$(git diff --cached | grep -E "^\+._def |^\+._class |^\+.*import " | head -3 | sed 's/^+//' | sed 's/def //' | sed 's/class //' | sed 's/import //' | tr '\n' ', ' | sed 's/,$//')
 
   # Create descriptive subject (fallback to file-based if no key changes)
   if [ -n "$KEY_CHANGES" ] && [ ${#KEY_CHANGES} -lt 40 ]; then
@@ -377,6 +421,7 @@ else
 fi
 
 # Execute commit with professional message format
+
 git commit -m "$(cat <<EOF
 ${COMMIT_MSG}
 
@@ -385,6 +430,7 @@ EOF
 )"
 
 # Verify commit succeeded
+
 if [ $? -eq 0 ]; then
   echo "✅ Commit successful"
   git log --oneline -1 --format="Commit: %h - %s"
@@ -393,7 +439,8 @@ else
   git status --porcelain
   exit 1
 fi
-```
+
+```text
 
 **Key Improvements:**
 - ✅ Intelligent type detection (feat/fix/refactor/docs/test based on actual changes)
@@ -406,16 +453,21 @@ fi
 - ✅ Professional tone (no emoji in commit message, only Co-Authored-By)
 
 **STEP 7: Post-Commit Actions**
+
 ```bash
+
 # Push if requested
-if [[ "$ARGUMENTS" == *"--push-after"* ]]; then
+
+if [[ "$ARGUMENTS" == _"--push-after"_ ]]; then
   git push origin $(git branch --show-current)
 fi
 
 # Report commit status
+
 echo "Commit Status: $(git log --oneline -1)"
 echo "Branch Status: $(git status --porcelain)"
-```
+
+```text
 
 **STEP 8: Commit Result Collection & Validation**
 - Validate each quality agent's fixes were committed
@@ -462,6 +514,7 @@ Do not describe what you will do. DO IT NOW.
 
 **PRE-COMMIT HOOK INTEGRATION:**
 If pre-commit hooks fail after quality fixes:
+
 - Automatically retry commit ONCE to include hook modifications
 - If hooks fail again, report specific hook failures for manual intervention
 - Never bypass hooks unless explicitly requested with --skip-hooks
@@ -472,16 +525,20 @@ If pre-commit hooks fail after quality fixes:
 After successful commit, intelligently invoke related commands:
 
 ```bash
+
 # After commit success, check for workflow continuation
+
 echo "Analyzing commit success for workflow continuation..."
 
 # Check if user disabled chaining
-if [[ "$ARGUMENTS" == *"--no-chain"* ]]; then
+
+if [[ "$ARGUMENTS" == _"--no-chain"_ ]]; then
     echo "Auto-chaining disabled by user flag"
     exit 0
 fi
 
 # Prevent infinite loops
+
 INVOCATION_DEPTH=${SLASH_DEPTH:-0}
 if [[ $INVOCATION_DEPTH -ge 3 ]]; then
     echo "⚠️ Maximum command chain depth reached. Stopping auto-invocation."
@@ -489,15 +546,18 @@ if [[ $INVOCATION_DEPTH -ge 3 ]]; then
 fi
 
 # Set depth for next invocation
+
 export SLASH_DEPTH=$((INVOCATION_DEPTH + 1))
 
 # If --push-after flag was used and commit succeeded, create/update PR
-if [[ "$ARGUMENTS" == *"--push-after"* ]] && [[ "$COMMIT_SUCCESS" == "true" ]]; then
+
+if [[ "$ARGUMENTS" == _"--push-after"_ ]] && [[ "$COMMIT_SUCCESS" == "true" ]]; then
     echo "Commit pushed to remote. Creating/updating PR..."
     SlashCommand(command="/pr create")
 fi
 
 # If on a feature branch and commit succeeded, offer PR creation
+
 CURRENT_BRANCH=$(git branch --show-current)
 if [[ "$CURRENT_BRANCH" != "main" ]] && [[ "$CURRENT_BRANCH" != "master" ]] && [[ "$COMMIT_SUCCESS" == "true" ]]; then
     echo "✅ Commit successful on feature branch: $CURRENT_BRANCH"
@@ -512,4 +572,5 @@ if [[ "$CURRENT_BRANCH" != "main" ]] && [[ "$CURRENT_BRANCH" != "master" ]] && [
         SlashCommand(command="/pr status")
     fi
 fi
-```
+
+```text

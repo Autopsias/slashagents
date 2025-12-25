@@ -22,7 +22,8 @@ if [[ -d "$PROJECT_ROOT/_bmad" ]]; then
 else
   echo "NONE"
 fi
-```
+
+```text
 
 ---
 
@@ -30,7 +31,8 @@ fi
 
 ### IF BMAD Project Found
 
-```
+```text
+
 Output: "BMAD project detected: {project_root}"
 Output: ""
 Output: "Available workflows:"
@@ -48,16 +50,19 @@ IF exists:
 ELSE:
   Output: "Sprint status not found. Run:"
   Output: "  /bmad:bmm:workflows:sprint-planning"
-```
+
+```text
 
 ### IF No BMAD Project
 
-```
+```text
+
 Output: "Not a BMAD project."
 Output: ""
 Output: "Epic-dev requires a BMAD project setup."
 Output: "Initialize with: /bmad:bmm:workflows:workflow-init"
-```
+
+```text
 
 ---
 

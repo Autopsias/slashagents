@@ -1,15 +1,11 @@
 ---
-description: "Manages PR workflows - create, status, merge, sync"
-prerequisites: "`github` MCP (via pr-workflow-manager)"
+name: pr-workflow
+description: Handle pull request operations - create, status, update, validate, merge, sync. Use when user mentions "PR", "pull request", "merge", "create branch", "check PR status", or any Git workflow terms related to pull requests.
 ---
 
 # PR Workflow Skill
 
 Generic PR management for any Git project. Works with any branching strategy, any base branch, any project structure.
-
-**Prerequisites:** This skill requires the `github` MCP server configured in Claude Code to access GitHub CLI (`gh`) functionality. The pr-workflow-manager agent will verify prerequisites and provide setup instructions if the MCP server is not configured.
-
----
 
 ## Capabilities
 

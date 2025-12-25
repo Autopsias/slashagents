@@ -1,7 +1,7 @@
 # CC_Agents_Commands
-**Version:** 1.0.0 | **Updated:** 2025-12-16 | **Author:** Ricardo
+**Version:** 1.1.0 | **Updated:** 2025-12-25 | **Author:** Ricardo
 
-A curated collection of 23 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 11 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 11 agents (specialized agents for testing, code quality, and workflow automation), and 1 skill (reusable PR operations).
+A curated collection of 38 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 17 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 20 agents (specialized agents for testing, code quality, and workflow automation), and 1 skill (reusable PR operations).
 
 Whether you're managing pull requests, orchestrating CI pipelines, or following structured BMAD development cycles, these tools preserve your creative momentum by automating repetitive tasks and providing intelligent assistance exactly when you need it.
 
@@ -9,8 +9,8 @@ Whether you're managing pull requests, orchestrating CI pipelines, or following 
 
 | Type | Count | Description |
 |------|-------|-------------|
-| **Commands** | 11 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
-| **Agents** | 11 | Specialized agents for specific tasks |
+| **Commands** | 17 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
+| **Agents** | 20 | Specialized agents for specific tasks |
 | **Skills** | 1 | Reusable skill definitions |
 
 ## Installation
@@ -101,6 +101,7 @@ Commands are organized by workflow moment to help you quickly find the right too
 |---------|--------------|---------------|
 | `/epic-dev` | Automates BMAD development cycle for epic stories | BMAD framework |
 | `/epic-dev-full` | Executes full TDD/ATDD-driven BMAD development | BMAD framework |
+| `/epic-dev-epic-end-tests` | Validates epic completion with NFR assessment | BMAD framework |
 | `/parallelize` | Parallelizes tasks across sub-agents | — |
 | `/parallelize-agents` | Parallelizes tasks with specialized agents | — |
 
@@ -109,7 +110,12 @@ Commands are organized by workflow moment to help you quickly find the right too
 | Command | What it does | Prerequisites |
 |---------|--------------|---------------|
 | `/ci-orchestrate` | Orchestrates CI failure analysis and fixes | `github` MCP |
-| `/test-orchestrate` | Orchestrates test failure analysis and fixes | — |
+| `/test-orchestrate` | Orchestrates test failure analysis and fixes | test files and results |
+| `/code-quality` | Analyzes and fixes code quality issues | code files in project |
+| `/coverage` | Orchestrates test coverage improvement | test coverage tools |
+| `/create-test-plan` | Creates comprehensive test plans | project documentation |
+| `/test-epic-full` | Tests epic-dev-full command workflow | BMAD framework |
+| `/user-testing` | Facilitates user testing sessions | user testing setup |
 | `/usertestgates` | Finds and runs next test gate | test gates in project |
 
 ### Shipping
@@ -140,6 +146,8 @@ Agents are organized by domain to help you quickly find the right specialist for
 | `type-error-fixer` | Fixes Python type errors and annotations | Python/TypeScript project |
 | `import-error-fixer` | Fixes Python import and dependency errors | code files in project |
 | `security-scanner` | Scans code for security vulnerabilities | code files in project |
+| `code-quality-analyzer` | Analyzes code quality metrics and patterns | code files in project |
+| `requirements-analyzer` | Analyzes and validates project requirements | project documentation |
 
 ### Workflow Support
 
@@ -148,6 +156,34 @@ Agents are organized by domain to help you quickly find the right specialist for
 | `pr-workflow-manager` | Manages pull request workflows via GitHub | `github` MCP |
 | `parallel-executor` | Executes tasks independently without delegation | — |
 | `digdeep` | Performs Five Whys root cause analysis | `perplexity-ask` MCP |
+
+### Testing & Strategy
+
+| Agent | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `test-strategy-analyst` | Analyzes test failures with Five Whys methodology | `perplexity-ask` MCP, `exa` MCP |
+| `test-documentation-generator` | Generates test failure runbooks and documentation | test files in project |
+| `ui-test-discovery` | Discovers UI components for test generation | UI code in project |
+| `validation-planner` | Plans validation strategies for features | project files |
+| `scenario-designer` | Transforms requirements into test scenarios | project files |
+| `evidence-collector` | Validates and collects test evidence | project files |
+| `interactive-guide` | Guides human testers through validation | project files |
+
+### CI/DevOps
+
+| Agent | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `ci-strategy-analyst` | Analyzes CI/CD pipeline issues strategically | `perplexity-ask` MCP, `exa` MCP |
+| `ci-infrastructure-builder` | Builds CI/CD infrastructure and workflows | `github` MCP |
+| `ci-documentation-generator` | Generates CI/CD documentation | CI infrastructure |
+
+### Browser Automation
+
+| Agent | What it does | Prerequisites |
+|-------|--------------|---------------|
+| `browser-executor` | Executes browser automation with Chrome DevTools | `chrome-devtools` MCP or `playwright` MCP |
+| `chrome-browser-executor` | Chrome-specific browser automation executor | `chrome-devtools` MCP |
+| `playwright-browser-executor` | Playwright-specific browser automation executor | `playwright` MCP |
 
 ## Skills Reference
 

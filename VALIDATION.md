@@ -40,6 +40,12 @@ Use checkboxes `[ ]` to track completion, then replace with PASS/FAIL/SKIP when 
 | test-orchestrate.md | command | Project-Context | PASS | PASS | test files and test results in project |
 | commit-orchestrate.md | command | Project-Context | PASS | PASS | git repository |
 | usertestgates.md | command | Project-Context | PASS | PASS | test gates infrastructure |
+| code-quality.md | command | Project-Context | [ ] | [ ] | code files in project |
+| coverage.md | command | Project-Context | [ ] | [ ] | test coverage infrastructure |
+| create-test-plan.md | command | Project-Context | [ ] | [ ] | project documentation |
+| epic-dev-epic-end-tests.md | command | BMAD-Required | [ ] | [ ] | BMAD framework |
+| test-epic-full.md | command | BMAD-Required | [ ] | [ ] | BMAD framework |
+| user-testing.md | command | Project-Context | [ ] | [ ] | user testing infrastructure |
 | parallel-executor.md | agent | Standalone | PASS | N/A | — |
 | pr-workflow-manager.md | agent | MCP-Enhanced | PASS | PASS | `github` MCP |
 | digdeep.md | agent | MCP-Enhanced | PASS | PASS | `perplexity-ask` MCP |
@@ -51,15 +57,30 @@ Use checkboxes `[ ]` to track completion, then replace with PASS/FAIL/SKIP when 
 | type-error-fixer.md | agent | Project-Context | PASS | PASS | Python/TypeScript project |
 | import-error-fixer.md | agent | Project-Context | PASS | PASS | code files in project |
 | security-scanner.md | agent | Project-Context | PASS | PASS | code files in project |
-| pr-workflow.md | skill | MCP-Enhanced | PASS | PASS | `github` MCP |
+| test-strategy-analyst.md | agent | MCP-Enhanced | [ ] | [ ] | `perplexity-ask` MCP, `exa` MCP |
+| test-documentation-generator.md | agent | Project-Context | [ ] | [ ] | test files in project |
+| ui-test-discovery.md | agent | Project-Context | [ ] | [ ] | UI code in project |
+| validation-planner.md | agent | Project-Context | [ ] | [ ] | project files |
+| ci-strategy-analyst.md | agent | MCP-Enhanced | [ ] | [ ] | `perplexity-ask` MCP, `exa` MCP |
+| ci-infrastructure-builder.md | agent | MCP-Enhanced | [ ] | [ ] | `github` MCP |
+| ci-documentation-generator.md | agent | Project-Context | [ ] | [ ] | CI infrastructure |
+| code-quality-analyzer.md | agent | Project-Context | [ ] | [ ] | code files in project |
+| requirements-analyzer.md | agent | Project-Context | [ ] | [ ] | project documentation |
+| browser-executor.md | agent | MCP-Enhanced | [ ] | [ ] | `chrome-devtools` MCP or `playwright` MCP |
+| chrome-browser-executor.md | agent | MCP-Enhanced | [ ] | [ ] | `chrome-devtools` MCP |
+| playwright-browser-executor.md | agent | MCP-Enhanced | [ ] | [ ] | `playwright` MCP |
+| scenario-designer.md | agent | Project-Context | [ ] | [ ] | project files |
+| evidence-collector.md | agent | Project-Context | [ ] | [ ] | project files |
+| interactive-guide.md | agent | Project-Context | [ ] | [ ] | project files |
+| pr-workflow/ | skill | MCP-Enhanced | PASS | PASS | `github` MCP |
 
 **Tier Distribution:**
 - Standalone: 4 tools (3 commands, 1 agent)
-- MCP-Enhanced: 5 tools (2 commands, 2 agents, 1 skill)
-- BMAD-Required: 3 tools (3 commands)
-- Project-Context: 11 tools (3 commands, 8 agents)
+- MCP-Enhanced: 13 tools (2 commands, 10 agents, 1 skill)
+- BMAD-Required: 5 tools (5 commands)
+- Project-Context: 16 tools (7 commands, 9 agents)
 
-**Total: 23 tools (11 commands, 11 agents, 1 skill)**
+**Total: 38 tools (17 commands, 20 agents, 1 skill)**
 
 ---
 
@@ -158,13 +179,13 @@ Use checkboxes `[ ]` to track completion, then replace with PASS/FAIL/SKIP when 
 All gates below MUST be PASS before release.
 
 ### Gate 1: Tool Matrix Complete
-- [x] All 23 tools listed in validation matrix
-- [x] Type column populated for all tools (11 commands, 11 agents, 1 skill)
-- [x] Tier column populated for all tools (4 Standalone, 5 MCP-Enhanced, 3 BMAD-Required, 11 Project-Context)
+- [x] All 38 tools listed in validation matrix
+- [x] Type column populated for all tools (17 commands, 20 agents, 1 skill)
+- [x] Tier column populated for all tools (4 Standalone, 13 MCP-Enhanced, 5 BMAD-Required, 16 Project-Context)
 - [x] Prerequisites column populated for all tools
-- **Status:** PASS
+- **Status:** PARTIAL (15 new tools pending validation)
 - **Verified by:** Claude Code
-- **Date:** 2025-12-16
+- **Date:** 2025-12-25
 
 ### Gate 2: Clean Environment Tests
 - [x] Clean Environment Test performed per Section 2
@@ -235,6 +256,7 @@ Document any known issues that don't block release:
 |---------|------|-----------|--------|-------|
 | 1.0 | 2025-12-16 | Claude Code | PASS | Automated validation complete. Fixed 2 tier classifications (test-orchestrate, commit-orchestrate moved to Project-Context). Added explicit MCP checks to 4 tools (pr, ci-orchestrate, pr-workflow-manager, pr-workflow). All 23 tools validated with graceful failure handling. Gates 1-3: PASS. Gate 4 (First-Use Test): Pending human testers. |
 | 1.0 | 2025-12-17 | Claude Opus 4.5 | PASS | Code review verification. Fixed documentation inconsistencies: (1) Checked all Section 2 checkboxes to match PASS status, (2) Updated story File List to document all 11 modified files, (3) Clarified verification vs new testing approach in story completion notes, (4) Corrected Known Limitations - removed incorrect entry about _bmad (it's the correct folder name, not a breaking change). Story 4.1 marked done. |
+| 1.1 | 2025-12-25 | Claude Sonnet 4.5 | PARTIAL | Expanded from 23 to 38 tools. Added 6 new commands (code-quality, coverage, create-test-plan, epic-dev-epic-end-tests, test-epic-full, user-testing) and 15 new agents (9 testing/CI/quality agents, 3 browser automation agents, 3 other agents). Updated 5 commands and 5 agents with latest improvements from ~/.claude/. Restructured pr-workflow skill to directory format per MCP standards. Gate 1: PARTIAL - new tools pending validation. Gates 2-5: Pending. |
 
 ---
 

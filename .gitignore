@@ -7,7 +7,6 @@
 # -------------------------------------------
 
 # BMAD framework (helper for planning, not shipped)
-.bmad/
 _bmad/
 
 # Planning documents (PRD, architecture, epics, etc.)

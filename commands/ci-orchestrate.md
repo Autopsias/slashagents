@@ -1,8 +1,66 @@
 ---
-description: "Orchestrates CI/CD pipeline fixes"
-prerequisites: "`github` MCP"
-argument-hint: "[issue_description] [--check-actions] [--fix-all] [--quality-gates] [--performance]"
-allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
+description: "Orchestrate CI/CD pipeline fixes through parallel specialist agent deployment"
+argument-hint: "[issue] [--fix-all] [--strategic] [--research] [--docs] [--force-escalate] [--check-actions] [--quality-gates] [--performance] [--only-stage=<stage>]"
+allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand", "WebSearch", "WebFetch"]
+---
+
+## 🎯 TWO-MODE ORCHESTRATION
+
+This command operates in two modes:
+
+### Mode 1: TACTICAL (Default)
+- Fix immediate CI failures fast
+- Delegate to specialist fixers
+- Parallel execution for speed
+
+### Mode 2: STRATEGIC (Flag-triggered or Auto-escalated)
+- Research best practices via web search
+- Root cause analysis with Five Whys
+- Create infrastructure improvements
+- Generate documentation and runbooks
+- Then proceed with tactical fixes
+
+**Trigger Strategic Mode:**
+- `--strategic` flag: Full research + infrastructure + docs
+- `--research` flag: Research best practices only
+- `--docs` flag: Generate runbook/strategy docs only
+- `--force-escalate` flag: Force strategic mode regardless of history
+- Auto-detect phrases: "comprehensive", "strategic", "root cause", "analyze", "review"
+- Auto-escalate: After 3+ failures on same branch (checks git history)
+
+### Mode 3: TARGETED STAGE EXECUTION (--only-stage)
+When debugging a specific CI stage failure, skip earlier stages for faster iteration:
+
+**Usage:**
+- `--only-stage=<stage-name>` - Skip to a specific stage (e.g., `e2e`, `test`, `build`)
+- Stage names are detected dynamically from the project's CI workflow
+
+**How It Works:**
+1. Detects CI platform (GitHub Actions, GitLab CI, etc.)
+2. Reads workflow file to find available stages/jobs
+3. Uses platform-specific mechanism to trigger targeted run:
+   - GitHub Actions: `workflow_dispatch` with inputs
+   - GitLab CI: Manual trigger with variables
+   - Other: Fallback to manual guidance
+
+**When to Use:**
+- Late-stage tests failing but early stages pass → skip to failing stage
+- Iterating on test fixes → target specific test job
+- Once fixed, remove flag to run full pipeline
+
+**Project Requirements:**
+For GitHub Actions projects to support `--only-stage`, the CI workflow should have:
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      skip_to_stage:
+        type: choice
+        options: [all, validate, test, e2e]  # Your stage names
+```
+
+**⚠️ Important:** Skipped stages show as "skipped" (not failed) in the CI UI. The workflow maintains proper dependency graph.
+
 ---
 
 ## 🚨 CRITICAL ORCHESTRATION CONSTRAINTS 🚨
@@ -22,25 +80,220 @@ allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "Slas
 
 You must now execute the following CI/CD orchestration procedure for: "$ARGUMENTS"
 
-## STEP 0: Verify Prerequisites
+## STEP 0: MODE DETECTION & AUTO-ESCALATION
 
-Check if GitHub CLI (gh) is available:
-
+**STEP 0.1: Parse Mode Flags**
+Check "$ARGUMENTS" for strategic mode triggers:
 ```bash
-if ! command -v gh &> /dev/null; then
-  echo "❌ GitHub CLI (gh) not found"
-  echo ""
-  echo "This command requires the \`github\` MCP server configured in Claude Code."
-  echo ""
-  echo "To configure:"
-  echo "  1. Open Claude Code settings"
-  echo "  2. Add the \`github\` MCP server"
-  echo "  3. Restart Claude Code session"
-  echo ""
-  echo "Learn more: https://modelcontextprotocol.io/docs/tools/github"
-  exit 1
+# Check for explicit flags
+STRATEGIC_MODE=false
+RESEARCH_ONLY=false
+DOCS_ONLY=false
+TARGET_STAGE="all"  # Default: run all stages
+
+if [[ "$ARGUMENTS" =~ "--strategic" ]] || [[ "$ARGUMENTS" =~ "--force-escalate" ]]; then
+    STRATEGIC_MODE=true
+fi
+if [[ "$ARGUMENTS" =~ "--research" ]]; then
+    RESEARCH_ONLY=true
+    STRATEGIC_MODE=true
+fi
+if [[ "$ARGUMENTS" =~ "--docs" ]]; then
+    DOCS_ONLY=true
+fi
+
+# Parse --only-stage flag for targeted execution
+if [[ "$ARGUMENTS" =~ "--only-stage="([a-z]+) ]]; then
+    TARGET_STAGE="${BASH_REMATCH[1]}"
+    echo "🎯 Targeted execution mode: Skip to stage '$TARGET_STAGE'"
+fi
+
+# Check for strategic phrases (auto-detect intent)
+if [[ "$ARGUMENTS" =~ (comprehensive|strategic|root.cause|analyze|review|recurring|systemic) ]]; then
+    echo "🔍 Detected strategic intent in request. Enabling strategic mode..."
+    STRATEGIC_MODE=true
 fi
 ```
+
+**STEP 0.1.5: Execute Targeted Stage (if --only-stage specified)**
+If targeting a specific stage, detect CI platform and trigger appropriately:
+
+```bash
+if [[ "$TARGET_STAGE" != "all" ]]; then
+    echo "🚀 Targeted stage execution: $TARGET_STAGE"
+
+    # Detect CI platform and workflow file
+    CI_PLATFORM=""
+    WORKFLOW_FILE=""
+
+    if [ -d ".github/workflows" ]; then
+        CI_PLATFORM="github"
+        # Find main CI workflow (prefer ci.yml, then any workflow with 'ci' or 'test' in name)
+        if [ -f ".github/workflows/ci.yml" ]; then
+            WORKFLOW_FILE="ci.yml"
+        elif [ -f ".github/workflows/ci.yaml" ]; then
+            WORKFLOW_FILE="ci.yaml"
+        else
+            WORKFLOW_FILE=$(ls .github/workflows/*.{yml,yaml} 2>/dev/null | head -1 | xargs basename)
+        fi
+    elif [ -f ".gitlab-ci.yml" ]; then
+        CI_PLATFORM="gitlab"
+        WORKFLOW_FILE=".gitlab-ci.yml"
+    elif [ -f "azure-pipelines.yml" ]; then
+        CI_PLATFORM="azure"
+    fi
+
+    if [ -z "$CI_PLATFORM" ]; then
+        echo "⚠️ Could not detect CI platform. Manual trigger required."
+        echo "   Common CI files: .github/workflows/*.yml, .gitlab-ci.yml"
+        exit 1
+    fi
+
+    echo "📋 Detected: $CI_PLATFORM CI (workflow: $WORKFLOW_FILE)"
+
+    # Platform-specific trigger
+    case "$CI_PLATFORM" in
+        github)
+            # Check if workflow supports skip_to_stage input
+            if grep -q "skip_to_stage" ".github/workflows/$WORKFLOW_FILE" 2>/dev/null; then
+                echo "✅ Workflow supports skip_to_stage input"
+
+                gh workflow run "$WORKFLOW_FILE" \
+                    --ref "$(git branch --show-current)" \
+                    -f skip_to_stage="$TARGET_STAGE"
+
+                echo "✅ Workflow triggered. View at:"
+                sleep 3
+                gh run list --workflow="$WORKFLOW_FILE" --limit=1 --json url,status | \
+                    jq -r '.[0] | "   Status: \(.status) | URL: \(.url)"'
+            else
+                echo "⚠️ Workflow does not support skip_to_stage input."
+                echo "   To enable, add to workflow file:"
+                echo ""
+                echo "   on:"
+                echo "     workflow_dispatch:"
+                echo "       inputs:"
+                echo "         skip_to_stage:"
+                echo "           type: choice"
+                echo "           options: [all, $TARGET_STAGE]"
+                exit 1
+            fi
+            ;;
+        gitlab)
+            echo "📌 GitLab CI: Use web UI or 'glab ci run' with variables"
+            echo "   Example: glab ci run -v SKIP_TO_STAGE=$TARGET_STAGE"
+            ;;
+        *)
+            echo "📌 $CI_PLATFORM: Check platform docs for targeted stage execution"
+            ;;
+    esac
+
+    echo ""
+    echo "💡 Tip: Once fixed, run without --only-stage to verify full pipeline"
+    exit 0
+fi
+```
+
+**STEP 0.2: Check for Auto-Escalation**
+Analyze git history for recurring CI fix attempts:
+```bash
+# Count recent "fix CI" commits on current branch
+BRANCH=$(git branch --show-current)
+CI_FIX_COUNT=$(git log --oneline -20 | grep -iE "fix.*(ci|test|lint|type)" | wc -l | tr -d ' ')
+
+echo "📊 CI fix commits in last 20: $CI_FIX_COUNT"
+
+# Auto-escalate if 3+ CI fix attempts detected
+if [[ $CI_FIX_COUNT -ge 3 ]]; then
+    echo "⚠️ Detected $CI_FIX_COUNT CI fix attempts. AUTO-ESCALATING to strategic mode..."
+    echo "   Breaking the fix-push-fail cycle requires root cause analysis."
+    STRATEGIC_MODE=true
+fi
+```
+
+**STEP 0.3: Execute Strategic Mode (if triggered)**
+
+IF STRATEGIC_MODE is true:
+
+### STRATEGIC PHASE 1: Research & Analysis (PARALLEL)
+Launch research agents simultaneously:
+
+```
+### NEXT_ACTIONS (PARALLEL) ###
+Execute these simultaneously:
+1. Task(subagent_type="ci-strategy-analyst", description="Research CI best practices", prompt="...")
+2. Task(subagent_type="digdeep", description="Root cause analysis", prompt="...")
+
+After ALL complete: Synthesize findings before proceeding
+###
+```
+
+**Agent Prompts:**
+
+For ci-strategy-analyst:
+```
+Analyze CI/CD patterns for this project. The user is experiencing recurring CI failures.
+
+Context: "$ARGUMENTS"
+
+Your tasks:
+1. Research best practices for: Python/FastAPI + React/TypeScript + GitHub Actions + pytest-xdist
+2. Analyze git history for recurring "fix CI" patterns
+3. Apply Five Whys to top 3 failure patterns
+4. Produce prioritized, actionable recommendations
+
+Focus on SYSTEMIC issues, not symptoms. Think hard about root causes.
+```
+
+For digdeep:
+```
+Perform Five Whys root cause analysis on the CI failures.
+
+Context: "$ARGUMENTS"
+
+Analyze:
+1. What are the recurring CI failure patterns?
+2. Why do these failures keep happening despite fixes?
+3. What systemic issues allow these failures to recur?
+4. What structural changes would prevent them?
+
+Output a root cause analysis with specific, actionable fixes.
+```
+
+### STRATEGIC PHASE 2: Infrastructure (if --strategic, not --research)
+After research completes, launch infrastructure builder:
+
+```
+Task(subagent_type="ci-infrastructure-builder", description="Create CI infrastructure", prompt="
+Based on the strategic analysis findings, create necessary CI infrastructure:
+
+1. Create reusable GitHub Actions if cleanup/isolation needed
+2. Update pytest.ini/pyproject.toml for reliability (timeouts, reruns)
+3. Update CI workflow files if needed
+4. Add any beneficial plugins/dependencies
+
+Only create infrastructure that addresses identified root causes.
+")
+```
+
+### STRATEGIC PHASE 3: Documentation (if --strategic or --docs)
+Generate documentation for team reference:
+
+```
+Task(subagent_type="ci-documentation-generator", description="Generate CI docs", prompt="
+Create/update CI documentation based on analysis and infrastructure changes:
+
+1. Update docs/ci-failure-runbook.md with new failure patterns
+2. Update docs/ci-strategy.md with strategic improvements
+3. Store learnings in docs/ci-knowledge/ for future reference
+
+Document what was found, what was fixed, and how to prevent recurrence.
+")
+```
+
+IF RESEARCH_ONLY is true: Stop after Phase 1 (research only, no fixes)
+IF DOCS_ONLY is true: Skip to documentation generation only
+OTHERWISE: Continue to TACTICAL STEPS below
 
 ---
 
@@ -61,7 +314,52 @@ Use diagnostic tools to analyze CI/CD pipeline state:
 - Identify failing quality gates
 - Categorize failure types for specialist assignment
 
-**STEP 3: Failure Type Detection & Agent Mapping**
+**STEP 3: Discover Project Context (CRITICAL FOR CORRECT FIXES)**
+
+Before delegating ANY fixes, discover project-specific patterns:
+
+```bash
+# 📊 DISCOVERY PHASE - Read project conventions for agent context
+echo "=== Discovering Project Context ==="
+
+# Check for CLAUDE.md at project root
+if [ -f "CLAUDE.md" ]; then
+    echo "✅ Found CLAUDE.md - will provide to agents"
+    PROJECT_CONTEXT="Read CLAUDE.md for project conventions. "
+else
+    PROJECT_CONTEXT=""
+fi
+
+# Check for .claude/rules/ directory with language-specific rules
+if [ -d ".claude/rules" ]; then
+    echo "✅ Found .claude/rules/ - agents should check relevant rule files"
+    PROJECT_CONTEXT+="Check .claude/rules/ for domain-specific patterns. "
+fi
+
+# Detect project type from config files
+if [ -f "pyproject.toml" ] || [ -f "pytest.ini" ]; then
+    echo "✅ Detected Python project"
+    PROJECT_TYPE="python"
+fi
+if [ -f "package.json" ]; then
+    echo "✅ Detected Node.js project"
+    PROJECT_TYPE="${PROJECT_TYPE:+$PROJECT_TYPE+}node"
+fi
+
+# Detect validation command
+if grep -q '"prepush"' package.json 2>/dev/null; then
+    VALIDATION_CMD="pnpm prepush"
+elif [ -f "Makefile" ] && grep -q "^test:" Makefile; then
+    VALIDATION_CMD="make test"
+elif [ -f "pyproject.toml" ]; then
+    VALIDATION_CMD="pytest"
+else
+    VALIDATION_CMD="(auto-detect)"
+fi
+echo "📋 Validation command: $VALIDATION_CMD"
+```
+
+**STEP 4: Failure Type Detection & Agent Mapping**
 
 **CODE QUALITY FAILURES:**
 - Linting errors (ruff, mypy violations) → linting-fixer
@@ -86,7 +384,7 @@ Use diagnostic tools to analyze CI/CD pipeline state:
 - Docker/deployment issues → general-purpose (infrastructure)
 - Environment setup failures → general-purpose (environment)
 
-**STEP 4: Create Specialized CI Work Packages**
+**STEP 5: Create Specialized CI Work Packages**
 Based on detected failures, create targeted work packages:
 
 **For LINTING_FAILURES (READ-ONLY ANALYSIS):**
@@ -140,6 +438,18 @@ Your Scope: [Specific CI failures/files to fix]
 Your Task: Fix CI pipeline failures in your domain expertise
 Constraints: Focus only on your CI domain to avoid conflicts with other agents
 
+**CRITICAL - Project Context Discovery (Do This First):**
+Before making any fixes, you MUST:
+1. Read CLAUDE.md at project root (if exists) for project conventions
+2. Check .claude/rules/ directory for domain-specific rule files:
+   - If editing Python files → read python*.md rules
+   - If editing TypeScript → read typescript*.md rules
+   - If editing test files → read testing-related rules
+3. Detect project structure from config files (pyproject.toml, package.json)
+4. Apply discovered patterns to ALL your fixes
+
+This ensures fixes follow project conventions, not generic patterns.
+
 Critical CI Requirements:
 - Fix must pass CI quality gates
 - All changes must maintain backward compatibility
@@ -147,14 +457,16 @@ Critical CI Requirements:
 - Performance fixes must not regress other metrics
 
 CI Verification Steps:
-1. Fix identified issues in your domain
-2. Run domain-specific verification commands
-3. Ensure CI quality gates will pass
-4. Document what was fixed for CI tracking
+1. Discover project patterns (CLAUDE.md, .claude/rules/)
+2. Fix identified issues in your domain following project patterns
+3. Run domain-specific verification commands
+4. Ensure CI quality gates will pass
+5. Document what was fixed for CI tracking
 
-Output Format: 
+Output Format:
 - Summary of CI fixes completed in your domain
 - Specific issues resolved (with error codes/messages)
+- Project patterns applied (from CLAUDE.md/.claude/rules/)
 - Verification steps taken
 - CI pipeline components affected
 - Expected CI status after fix
@@ -195,19 +507,62 @@ gh run view --log | grep -E "(coverage|performance|security|lint)" | tail -10
 - Provide CI pipeline health summary
 - Recommend follow-up CI improvements
 
-## PARALLEL EXECUTION GUARANTEE
+## PARALLEL EXECUTION WITH CONFLICT AVOIDANCE
 
-🔒 ABSOLUTE REQUIREMENT: This command MUST maintain parallel execution in ALL modes.
+🔒 ABSOLUTE REQUIREMENT: This command MUST maximize parallelization while avoiding file conflicts.
 
-- ✅ All CI fixes run in parallel across specialist domains
-- ❌ FAILURE: Sequential CI fixes (one domain after another)
-- ❌ FAILURE: Waiting for one CI fix before starting another
+### Parallel Execution Rules
+
+**SAFE TO PARALLELIZE (different file domains):**
+- linting-fixer + api-test-fixer → ✅ Different files
+- security-scanner + unit-test-fixer → ✅ Different concerns
+- type-error-fixer + e2e-test-fixer → ✅ Different files
+
+**MUST SERIALIZE (overlapping file domains):**
+- linting-fixer + import-error-fixer → ⚠️ Both modify Python imports → RUN SEQUENTIALLY
+- api-test-fixer + database-test-fixer → ⚠️ May share fixtures → RUN SEQUENTIALLY
+
+### Conflict Detection Algorithm
+
+Before launching agents, analyze which files each will modify:
+
+```bash
+# Detect potential conflicts by file pattern overlap
+# If two agents modify *.py files with imports, serialize them
+# If two agents modify tests/conftest.py, serialize them
+
+# Example conflict detection:
+LINTING_FILES="*.py"  # Modifies all Python
+IMPORT_FILES="*.py"   # Also modifies all Python
+# CONFLICT → Run linting-fixer FIRST, then import-error-fixer
+
+TEST_FIXER_FILES="tests/unit/**"
+API_FIXER_FILES="tests/integration/api/**"
+# NO CONFLICT → Run in parallel
+```
+
+### Execution Phases
+
+When conflicts exist, use phased execution:
+
+```
+PHASE 1 (Parallel): Non-conflicting agents
+├── security-scanner
+├── unit-test-fixer
+└── e2e-test-fixer
+
+PHASE 2 (Sequential): Import/lint chain
+├── import-error-fixer (run first - fixes missing imports)
+└── linting-fixer (run second - cleans up unused imports)
+
+PHASE 3 (Validation): Run project validation command
+```
 
 **CI SPECIALIZATION ADVANTAGE:**
 - Domain-specific CI expertise for faster resolution
-- Parallel processing of independent CI failures
-- Specialized tooling for each CI quality gate
-- Higher success rates for domain-specific CI issues
+- Parallel processing of INDEPENDENT CI failures
+- Serialized processing of CONFLICTING CI failures
+- Higher success rates due to correct ordering
 
 ## DELEGATION REQUIREMENT
 

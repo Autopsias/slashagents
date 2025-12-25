@@ -30,11 +30,11 @@ If no arguments provided, default to `--check` (analysis only).
 Execute quality check scripts from the repository root:
 
 ```bash
-cd /Users/ricardocarvalho/DeveloperFolder/Memento && python3 scripts/check-file-size.py 2>&1 || true
+python3 scripts/check-file-size.py 2>&1 || true
 ```
 
 ```bash
-cd /Users/ricardocarvalho/DeveloperFolder/Memento && python3 scripts/check-function-length.py 2>&1 || true
+python3 scripts/check-function-length.py 2>&1 || true
 ```
 
 Capture violations into categories:
@@ -118,11 +118,11 @@ Task(
 After agents complete, re-run analysis to verify fixes:
 
 ```bash
-cd /Users/ricardocarvalho/DeveloperFolder/Memento && python3 scripts/check-file-size.py
+python3 scripts/check-file-size.py
 ```
 
 ```bash
-cd /Users/ricardocarvalho/DeveloperFolder/Memento && python3 scripts/check-function-length.py
+python3 scripts/check-function-length.py
 ```
 
 ## STEP 6: Report Summary

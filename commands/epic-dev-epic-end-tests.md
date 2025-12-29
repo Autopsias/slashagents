@@ -9,7 +9,6 @@ allowed-tools: ["Task", "SlashCommand", "Read", "Write", "Edit", "Bash", "Grep",
 Execute the end-of-epic test validation sequence for epic: "$ARGUMENTS"
 
 This command orchestrates three critical BMAD Test Architect workflows in sequence:
-
 1. **NFR Assessment** - Validate non-functional requirements (performance, security, reliability, maintainability)
 2. **Test Quality Review** - Comprehensive test quality validation against best practices
 3. **Trace Phase 2** - Quality gate decision (PASS/CONCERNS/FAIL/WAIVED)
@@ -19,7 +18,6 @@ This command orchestrates three critical BMAD Test Architect workflows in sequen
 ## CRITICAL ORCHESTRATION CONSTRAINTS
 
 **YOU ARE A PURE ORCHESTRATOR - DELEGATION ONLY**
-
 - NEVER execute workflows directly - you are a pure orchestrator
 - NEVER use Edit, Write, MultiEdit tools yourself
 - NEVER implement fixes or modify code yourself
@@ -28,13 +26,11 @@ This command orchestrates three critical BMAD Test Architect workflows in sequen
 - Your role is ONLY to: read state, delegate tasks, verify completion, update session
 
 **GUARD RAIL CHECK**: Before ANY action ask yourself:
-
 - "Am I about to do work directly?" -> If YES: STOP and delegate via Task instead
 - "Am I using Read/Bash to check state?" -> OK to proceed
 - "Am I using Task tool to spawn a subagent?" -> Correct approach
 
 **SEQUENTIAL EXECUTION ONLY** - Each phase MUST complete before the next starts:
-
 - Never invoke multiple workflows in parallel
 - Wait for each Task to complete before proceeding
 - This ensures proper context flow through the 3-phase workflow
@@ -44,13 +40,9 @@ This command orchestrates three critical BMAD Test Architect workflows in sequen
 ## MODEL STRATEGY
 
 | # | Phase | Model | Rationale |
-
-| --- | ------- | ------- | ----------- |
-
+|---|-------|-------|-----------|
 | 1 | NFR Assessment | `opus` | Comprehensive evidence analysis requires deep understanding |
-
 | 2 | Test Quality Review | `sonnet` | Rule-based quality validation, faster iteration |
-
 | 3 | Trace Phase 2 | `opus` | Quality gate decision requires careful analysis |
 
 ---
@@ -58,13 +50,11 @@ This command orchestrates three critical BMAD Test Architect workflows in sequen
 ## STEP 1: Parse Arguments
 
 Parse "$ARGUMENTS" to extract:
-
 - **epic_number** (required): First positional argument (e.g., "1" for Epic 1)
 - **--resume**: Continue from last incomplete phase
 - **--yolo**: Skip user confirmation pauses between phases
 
 **Validation:**
-
 - epic_number must be a positive integer
 - If no epic_number provided, error with: "Usage: /epic-dev-epic_end_tests <epic-number> [--yolo] [--resume]"
 
@@ -82,8 +72,7 @@ if [[ ! -d "$PROJECT_ROOT/_bmad" ]]; then
   echo "ERROR: Not a BMAD project. Run /bmad:bmm:workflows:workflow-init first."
   exit 1
 fi
-
-```text
+```
 
 Load sprint artifacts path from `_bmad/bmm/config.yaml` (default: `docs/sprint-artifacts`)
 Load output folder from config (default: `docs`)
@@ -93,15 +82,12 @@ Load output folder from config (default: `docs`)
 ## STEP 3: Verify Epic Readiness
 
 Before running end-of-epic tests, verify:
-
 1. All stories in epic are "done" or "review" status
 2. Sprint-status.yaml exists and is readable
 3. Epic file exists at `{sprint_artifacts}/epic-{epic_num}.md`
 
 If stories are incomplete:
-
-```text
-
+```
 Output: "WARNING: Epic {epic_num} has incomplete stories."
 Output: "Stories remaining: {list incomplete stories}"
 
@@ -116,8 +102,7 @@ decision = AskUserQuestion(
 
 IF decision == "Stop":
   HALT with: "Complete remaining stories, then run: /epic-dev-epic_end_tests {epic_num}"
-
-```text
+```
 
 ---
 
@@ -154,8 +139,7 @@ epic_end_tests_session:
   # Timestamps
   started: "{timestamp}"
   last_updated: "{timestamp}"
-
-```text
+```
 
 **PHASE VALUES:**
 - `starting` - Initial state
@@ -184,8 +168,7 @@ epic_end_tests_session:
 
 **Execute when:** `phase == "starting"` OR `phase == "nfr_assessment"`
 
-```text
-
+```
 Output: "
 ================================================================================
 [Phase 1/3] NFR ASSESSMENT - Epic {epic_num}
@@ -196,14 +179,13 @@ Model: opus (comprehensive evidence analysis)
 "
 
 Update session:
-
   - phase: "nfr_assessment"
   - last_updated: {timestamp}
 
 Write session to sprint-status.yaml
 
 Task(
-  subagent_type="parallel-executor",
+  subagent_type="general-purpose",
   model="opus",
   description="NFR assessment for Epic {epic_num}",
   prompt="NFR ASSESSMENT AGENT - Epic {epic_num}
@@ -253,7 +235,6 @@ Execute immediately and autonomously. Do not ask for confirmation."
 Parse NFR output JSON
 
 Update session:
-
   - phase: "nfr_complete"
   - nfr_status: {status}
   - nfr_categories_assessed: {categories_assessed}
@@ -308,8 +289,7 @@ IF NOT --yolo:
     HALT
 
 PROCEED TO PHASE 2
-
-```text
+```
 
 ---
 
@@ -317,8 +297,7 @@ PROCEED TO PHASE 2
 
 **Execute when:** `phase == "nfr_complete"` OR `phase == "test_review"`
 
-```text
-
+```
 Output: "
 ================================================================================
 [Phase 2/3] TEST QUALITY REVIEW - Epic {epic_num}
@@ -329,14 +308,13 @@ Model: sonnet (rule-based quality validation)
 "
 
 Update session:
-
   - phase: "test_review"
   - last_updated: {timestamp}
 
 Write session to sprint-status.yaml
 
 Task(
-  subagent_type="parallel-executor",
+  subagent_type="general-purpose",
   model="sonnet",
   description="Test quality review for Epic {epic_num}",
   prompt="TEST QUALITY REVIEWER AGENT - Epic {epic_num}
@@ -393,7 +371,6 @@ Execute immediately and autonomously. Do not ask for confirmation."
 Parse test review output JSON
 
 # Map quality grade to status
-
 IF quality_score >= 90:
   test_review_status = "Excellent"
 ELSE IF quality_score >= 80:
@@ -406,7 +383,6 @@ ELSE:
   test_review_status = "Critical"
 
 Update session:
-
   - phase: "test_review_complete"
   - test_review_status: {test_review_status}
   - test_quality_score: {quality_score}
@@ -463,8 +439,7 @@ IF NOT --yolo:
     HALT
 
 PROCEED TO PHASE 3
-
-```text
+```
 
 ---
 
@@ -472,8 +447,7 @@ PROCEED TO PHASE 3
 
 **Execute when:** `phase == "test_review_complete"` OR `phase == "trace_phase2"`
 
-```text
-
+```
 Output: "
 ================================================================================
 [Phase 3/3] QUALITY GATE DECISION - Epic {epic_num}
@@ -484,14 +458,13 @@ Model: opus (careful gate decision analysis)
 "
 
 Update session:
-
   - phase: "trace_phase2"
   - last_updated: {timestamp}
 
 Write session to sprint-status.yaml
 
 Task(
-  subagent_type="parallel-executor",
+  subagent_type="general-purpose",
   model="opus",
   description="Quality gate decision for Epic {epic_num}",
   prompt="QUALITY GATE AGENT - Epic {epic_num}
@@ -579,7 +552,6 @@ Execute immediately and autonomously. Do not ask for confirmation."
 Parse gate decision output JSON
 
 Update session:
-
   - phase: "gate_decision"
   - gate_decision: {decision}
   - p0_coverage: {p0_coverage}
@@ -590,9 +562,7 @@ Update session:
 Write session to sprint-status.yaml
 
 # ═══════════════════════════════════════════════════════════════════════════
-
 # QUALITY GATE DECISION HANDLING
-
 # ═══════════════════════════════════════════════════════════════════════════
 
 Output:
@@ -624,7 +594,6 @@ IF decision == "PASS":
   Output: "Ready for: deployment / release / next epic"
 
   Update session:
-
     - phase: "complete"
 
   PROCEED TO COMPLETION
@@ -644,7 +613,6 @@ ELSE IF decision == "CONCERNS":
 
   IF concerns_decision == "Accept and complete":
     Update session:
-
       - phase: "complete"
     PROCEED TO COMPLETION
 
@@ -683,12 +651,10 @@ ELSE IF decision == "FAIL":
     Output: "WARNING: Forcing completion despite FAIL status."
     Output: "This will be recorded in the gate decision document."
     Update session:
-
       - gate_decision: "FAIL (FORCED)"
       - phase: "complete"
     PROCEED TO COMPLETION
-
-```text
+```
 
 ---
 
@@ -696,8 +662,7 @@ ELSE IF decision == "FAIL":
 
 When user requests waiver:
 
-```text
-
+```
 Output: "Requesting waiver for quality gate result: {decision}"
 
 waiver_reason = AskUserQuestion(
@@ -723,9 +688,8 @@ waiver_approver = AskUserQuestion(
 )
 
 # Update gate decision document with waiver
-
 Task(
-  subagent_type="parallel-executor",
+  subagent_type="general-purpose",
   model="haiku",
   description="Document waiver for Epic {epic_num}",
   prompt="WAIVER DOCUMENTER AGENT
@@ -757,20 +721,17 @@ Execute immediately."
 )
 
 Update session:
-
   - gate_decision: "WAIVED"
   - phase: "complete"
 
 PROCEED TO COMPLETION
-
-```text
+```
 
 ---
 
 ## STEP 6: Completion Summary
 
-```text
-
+```
 Output:
 ════════════════════════════════════════════════════════════════════════════════
                     EPIC {epic_num} END TESTS COMPLETE
@@ -799,7 +760,6 @@ Output:
 ────────────────────────────────────────────────────────────────────────────────
   GENERATED ARTIFACTS
 ────────────────────────────────────────────────────────────────────────────────
-
   1. {session.nfr_report_file}
   2. {session.test_review_file}
   3. {session.trace_file}
@@ -809,20 +769,17 @@ Output:
 ────────────────────────────────────────────────────────────────────────────────
 
 IF gate_decision == "PASS":
-
   - Ready for deployment/release
   - Run retrospective: /bmad:bmm:workflows:retrospective
   - Start next epic: /epic-dev <next-epic-number>
 
 ELSE IF gate_decision == "CONCERNS" OR gate_decision == "WAIVED":
-
   - Deploy with monitoring
   - Create follow-up stories for gaps
   - Schedule tech debt review
   - Run retrospective: /bmad:bmm:workflows:retrospective
 
 ELSE IF gate_decision == "FAIL" OR gate_decision == "FAIL (FORCED)":
-
   - Address blocking issues before deployment
   - Re-run: /epic-dev-epic_end_tests {epic_num}
   - Consider breaking up remaining work
@@ -830,10 +787,8 @@ ELSE IF gate_decision == "FAIL" OR gate_decision == "FAIL (FORCED)":
 ════════════════════════════════════════════════════════════════════════════════
 
 # Clear session
-
 Clear epic_end_tests_session from sprint-status.yaml
-
-```text
+```
 
 ---
 
@@ -841,8 +796,7 @@ Clear epic_end_tests_session from sprint-status.yaml
 
 On any workflow failure:
 
-```text
-
+```
 1. Capture error output
 2. Update session:
    - phase: "error"
@@ -852,7 +806,7 @@ On any workflow failure:
 4. Display error with phase context:
    Output: "ERROR in Phase {current_phase}: {error_message}"
 
-1. Offer recovery options:
+5. Offer recovery options:
    error_decision = AskUserQuestion(
      question: "How to handle this error?",
      header: "Error Recovery",
@@ -863,12 +817,11 @@ On any workflow failure:
      ]
    )
 
-1. Handle recovery choice:
+6. Handle recovery choice:
    - Retry: Reset phase state, re-execute
    - Skip phase: Only allowed for Phase 1 or 2 (not Phase 3)
    - Stop: HALT with resume instructions
-
-```text
+```
 
 ---
 
@@ -877,7 +830,6 @@ On any workflow failure:
 Parse "$ARGUMENTS" and begin the epic end-of-development test validation sequence immediately.
 
 Run in sequence:
-
 1. NFR Assessment (opus)
 2. Test Quality Review (sonnet)
 3. Quality Gate Decision (opus)

@@ -1,10 +1,8 @@
 # Coverage Orchestrator
 
-## ⚠️ GENERAL-PURPOSE COMMAND - Works with any project
-
-Report directories are detected dynamically (workspace/reports/coverage, reports/coverage, coverage, .)
-
-Override with COVERAGE_REPORTS_DIR environment variable if needed
+# ⚠️ GENERAL-PURPOSE COMMAND - Works with any project
+# Report directories are detected dynamically (workspace/reports/coverage, reports/coverage, coverage, .)
+# Override with COVERAGE_REPORTS_DIR environment variable if needed
 
 Systematically improve test coverage from any starting point (20-75%) to production-ready levels (75%+) through intelligent gap analysis and strategic orchestration.
 
@@ -13,7 +11,6 @@ Systematically improve test coverage from any starting point (20-75%) to product
 `/coverage [mode] [target]`
 
 Available modes:
-
 - `analyze` (default) - Analyze coverage gaps with prioritization
 - `learn` - Learn existing test patterns for integration-safe generation
 - `improve` - Orchestrate specialist agents for improvement
@@ -45,9 +42,7 @@ You are a **Coverage Orchestration Specialist** focused on systematic test cover
 ## Operational Modes
 
 ### Mode: learn (NEW - Pattern Analysis)
-
 Learn existing test patterns to ensure safe integration of new tests:
-
 - **Pattern Discovery**: Analyze existing test files for class naming patterns, fixture usage, import patterns
 - **Mock Strategy Analysis**: Catalog how mocks are used (AsyncMock patterns, patch locations, system boundaries)
 - **Fixture Compatibility**: Document available fixtures (MockSupabaseClient, TestDataFactory, etc.)
@@ -57,19 +52,15 @@ Learn existing test patterns to ensure safe integration of new tests:
 - **Test Complexity Analysis**: Measure complexity of existing tests to establish simplicity baselines
 
 ### Mode: analyze (default)
-
 Run comprehensive coverage analysis with gap prioritization:
-
 - Execute coverage analysis using existing pytest/coverage.py infrastructure
 - Identify critical gaps with business logic prioritization (API endpoints > database > unit > integration)
-- Apply complexity weighting algorithm for gap priority scoring
+- Apply complexity weighting algorithm for gap priority scoring  
 - Generate structured analysis report with actionable recommendations
 - Store results in `$REPORTS_DIR/coverage-analysis-{timestamp}.md`
 
-### Mode: improve
-
+### Mode: improve  
 Orchestrate specialist agents based on gap analysis with pattern-aware fixes:
-
 - **Pre-flight Validation**: Verify existing tests pass before agent coordination
 - Run gap analysis to identify improvement opportunities
 - **Pattern-Aware Agent Instructions**: Provide learned patterns to specialist agents for safe integration
@@ -82,9 +73,7 @@ Orchestrate specialist agents based on gap analysis with pattern-aware fixes:
 - Generate coordination report with agent activities and outcomes
 
 ### Mode: generate
-
 Generate new tests for identified coverage gaps with pattern-based safety and simplicity:
-
 - **MANDATORY: Use learned patterns first** - Load patterns from previous `learn` mode execution
 - **Pre-flight Safety Check**: Verify existing tests pass before adding new ones
 - Focus on test creation for uncovered critical paths
@@ -102,9 +91,7 @@ Generate new tests for identified coverage gaps with pattern-based safety and si
 - Provide guidance on minimal mock requirements
 
 ### Mode: validate
-
 Validate coverage improvements with integration safety and simplicity enforcement:
-
 - **Integration Safety Validation**: Verify no existing tests broken by new additions
 - Verify recent coverage improvements meet quality standards
 - **Anti-mocking-theater validation**: Check tests focus on real functionality
@@ -127,42 +114,36 @@ Automatically score generated and existing tests to ensure quality and prevent m
 ### Scoring Criteria (0-10 scale) - UPDATED WITH ANTI-OVER-ENGINEERING
 
 #### Functionality Focus (30% weight)
-
 - **10 points**: Tests actual business logic, calculations, transformations
-- **7 points**: Tests API behavior with realistic data validation
+- **7 points**: Tests API behavior with realistic data validation  
 - **4 points**: Tests with some mocking but meaningful assertions
 - **1 point**: Primarily tests mock interactions, not functionality
 
 #### Mock Usage Quality (25% weight)
-
 - **10 points**: Mocks only external dependencies (DB, APIs, file system)
 - **7 points**: Some internal mocking but tests core logic
 - **4 points**: Over-mocks but still tests some real behavior
 - **1 point**: Mocks everything including business logic
 
 #### Simplicity & Anti-Over-Engineering (30% weight) - NEW
-
 - **10 points**: Under 30 lines, direct assertions, no abstractions, uses existing fixtures
 - **7 points**: Under 50 lines, simple structure, reuses patterns
 - **4 points**: 50-75 lines, some complexity but focused
 - **1 point**: Over 75 lines, abstract patterns, custom frameworks, unnecessary complexity
 
-#### Pattern Integration (10% weight) - NEW
-
+#### Pattern Integration (10% weight) - NEW  
 - **10 points**: Follows exact existing patterns, reuses fixtures, compatible imports
 - **7 points**: Mostly follows patterns with minor deviations
 - **4 points**: Some pattern compliance, creates minimal new infrastructure
 - **1 point**: Ignores existing patterns, creates conflicting infrastructure
 
 #### Data Realism (5% weight) - REDUCED
-
 - **10 points**: Realistic data matching production patterns
 - **7 points**: Good test data with proper structure
 - **4 points**: Basic test data, somewhat realistic
 - **1 point**: Trivial data like "test123", no business context
 
 ### Quality Categories
-
 - **Excellent (8.5-10.0)**: Production-ready, maintainable tests
 - **Good (7.0-8.4)**: Solid tests with minor improvements needed
 - **Acceptable (5.5-6.9)**: Functional but needs refactoring
@@ -170,10 +151,9 @@ Automatically score generated and existing tests to ensure quality and prevent m
 - **Unacceptable (<3.0)**: Complete rewrite required
 
 ### Automated Quality Checks - ENHANCED WITH ANTI-OVER-ENGINEERING
-
 - **Mock ratio analysis**: Count mock lines vs assertion lines
 - **Business logic detection**: Identify tests of calculations/transformations
-- **Integration span**: Measure how many real components are tested together
+- **Integration span**: Measure how many real components are tested together  
 - **Data quality assessment**: Check for realistic vs trivial test data
 - **Complexity metrics**: Lines of code, import count, nesting depth
 - **Over-engineering detection**: Flag abstract base classes, custom frameworks, deep inheritance
@@ -184,163 +164,78 @@ Automatically score generated and existing tests to ensure quality and prevent m
 
 ## ANTI-MOCKING-THEATER PRINCIPLES
 
-🚨 **CRITICAL**: All test generation and improvement must follow these principles to avoid "mocking theater":
+🚨 **CRITICAL**: All test generation and improvement must follow anti-mocking-theater principles.
 
-### What NOT to Mock
+**Reference**: Read `~/.claude/knowledge/anti-mocking-theater.md` for complete guidelines.
 
-- ❌ **Internal business logic**: Functions that perform calculations or transformations
-- ❌ **Value objects**: Data classes, DTOs, simple data structures
-- ❌ **Pure functions**: Functions without side effects
-- ❌ **Domain services**: Core business logic within your application
-- ❌ **Simple utilities**: String formatters, converters, validators
+**Quick Summary**:
+- Mock only system boundaries (DB, APIs, file I/O, network, time)
+- Never mock business logic, value objects, pure functions, or domain services
+- Mock-to-assertion ratio must be < 50%
+- At least 70% of assertions must test actual functionality
 
-### What TO Mock (System Boundaries Only)
+## CRITICAL: ANTI-OVER-ENGINEERING PRINCIPLES
 
-- ✅ **Database connections**: Database clients, SQL execution
-- ✅ **External APIs**: HTTP requests, third-party services
-- ✅ **File system**: File I/O operations
-- ✅ **Network operations**: Email, messaging, webhooks
-- ✅ **Time dependencies**: datetime.now(), sleep functions
+🚨 **YAGNI**: Don't build elaborate test infrastructure for simple code.
 
-### Test Quality Requirements
+**Reference**: Read `~/.claude/knowledge/test-simplicity.md` for complete guidelines.
 
-- **Mock-to-assertion ratio**: < 50% of test lines should be mock setup
-- **Observable behavior focus**: Test outputs, return values, state changes
-- **Business logic coverage**: At least 70% of assertions test actual functionality
-- **Integration preference**: When feasible, test multiple components together
-- **Real data validation**: Use realistic test data, not trivial examples
-
-### Quality Scoring System
-
-- **High Quality (8-10)**: Minimal mocks, tests real calculations/transformations
-- **Medium Quality (5-7)**: Necessary mocks but good functional assertions
-- **Low Quality (1-4)**: Primarily tests mock interactions, not functionality
-
-## CRITICAL: ANTI-OVER-ENGINEERING PRINCIPLES - ENHANCED
-
-🚨 **YAGNI Principle**: You Aren't Gonna Need It - Don't build elaborate test infrastructure for simple code.
-
-### MANDATORY SIMPLICITY RULES FOR ALL TEST GENERATION
-
-**ZERO TOLERANCE for Complex Patterns:**
-
-- ❌ **NO abstract test base classes** - Use direct test classes only
-- ❌ **NO inheritance deeper than 1 level** - TestClassName extends nothing or pytest base only
-- ❌ **NO factory factories** - Use simple dictionaries or TestDataFactory methods directly
-- ❌ **NO custom test managers** - Use pytest fixtures and direct function calls
-- ❌ **NO test builders or fluent interfaces** - Create test data directly in setup_method
-- ❌ **NO custom assertion libraries** - Use pytest's built-in assert statements only
-- ❌ **NO test orchestrators beyond pytest** - No complex test runners or coordinators
-- ❌ **NO elaborate mock frameworks** - Use AsyncMock() and patch() directly
-
-**ENFORCED SIMPLICITY PATTERNS:**
-
-- ✅ **Maximum 50 lines per test method** (including setup)
-- ✅ **Maximum 5 imports per test file**
-- ✅ **Maximum 3 patch decorators per test**
-- ✅ **Use existing MockSupabaseClient as-is** - no extensions or wrappers
-- ✅ **Use existing TestDataFactory methods** - no new factory patterns
-- ✅ **Direct assertions only**: assert x == y, not custom matchers
-- ✅ **Simple setup_method initialization** under 10 lines
-- ✅ **Single responsibility per test** - one behavior per test method
-
-### Complexity Red Flags (Avoid These Patterns)
-
-- ❌ **Factory factories**: Complex nested factory patterns for simple data
-- ❌ **Test managers**: Manager classes that just orchestrate simple test operations
-- ❌ **Over-abstracted fixtures**: 100+ line fixtures for basic data setup
-- ❌ **Complex test hierarchies**: Inheritance trees deeper than 2 levels
-- ❌ **Enterprise patterns**: Circuit breakers, event buses, message queues in tests
-
-### Simplicity Guidelines
-
-- ✅ **Direct testing**: Test functions directly without elaborate setup
-- ✅ **Simple data**: Use dictionaries and lists for test data when possible
-- ✅ **Minimal fixtures**: Keep fixtures under 20 lines when possible
-- ✅ **Standard library**: Prefer Python stdlib over additional testing frameworks
-- ✅ **Clear assertions**: One clear assertion per test when possible
-
-### Validation Checks (Applied During Test Generation) - ENHANCED
-
-- **Line count check**: Flag tests >50 lines (likely over-engineered)
-- **Setup ratio check**: Flag if setup >50% of test code
-- **Dependency count**: Flag tests importing >5 modules
-- **Mock complexity**: Flag tests with >3 nested mock configurations
-- **Abstract pattern detection**: Flag unnecessary inheritance or factories
-- **Pattern compliance check**: Ensure new tests follow learned project patterns exactly
-- **Fixture compatibility check**: Verify no conflicts with existing fixtures
-- **Import path validation**: Check imports match project structure (apps.api.src...)
-- **Mock patch overlap detection**: Identify conflicting patch decorators
-- **Integration safety scoring**: Rate risk of breaking existing tests
+**Quick Summary**:
+- Maximum 50 lines per test, 5 imports per file, 3 patch decorators
+- NO abstract base classes, factory factories, custom test frameworks
+- Use existing fixtures (MockSupabaseClient, TestDataFactory) as-is
+- Direct assertions only: `assert x == y`
 
 ## TEST COMPATIBILITY MATRIX - CRITICAL INTEGRATION REQUIREMENTS
 
 🚨 **MANDATORY COMPLIANCE**: All generated tests MUST meet these compatibility requirements
 
 ### Project-Specific Requirements
-
 - **Python Path**: `apps/api/src` must be in sys.path before imports
 - **Environment Variables**: `TESTING=true` required for test mode
-- **Required Imports**:
-
+- **Required Imports**: 
   ```python
   from apps.api.src.services.service_name import ServiceName
   from tests.fixtures.database import MockSupabaseClient, TestDataFactory
   from unittest.mock import AsyncMock, patch
   import pytest
-
   ```
 
 ### Fixture Compatibility Requirements
-
 | Fixture Name | Usage Pattern | Import Path | Notes |
-
-| -------------- | --------------- | ------------- | ------- |
-
+|--------------|---------------|-------------|-------|
 | `MockSupabaseClient` | `self.mock_db = AsyncMock()` | `tests.fixtures.database` | Use AsyncMock, not direct MockSupabaseClient |
-
 | `TestDataFactory` | `TestDataFactory.workout()` | `tests.fixtures.database` | Static methods only |
-
 | `mock_supabase_client` | `def test_x(mock_supabase_client):` | pytest fixture | When function-scoped needed |
-
 | `test_data_factory` | `def test_x(test_data_factory):` | pytest fixture | Access via fixture parameter |
 
 ### Mock Pattern Requirements
-
 - **Database Mocking**: Always mock at service boundary (`db_service_override=self.mock_db`)
-- **Patch Locations**:
-
+- **Patch Locations**: 
   ```python
   @patch('apps.api.src.services.service_name.external_dependency')
   @patch('apps.api.src.database.client.db_service')  # Database patches
-
   ```
-
 - **AsyncMock Usage**: Use `AsyncMock()` for all async database operations
-- **Return Value Patterns**:
-
+- **Return Value Patterns**: 
   ```python
   self.mock_db.execute_query.return_value = [test_data]  # List wrapper
   self.mock_db.rpc.return_value.execute.return_value.data = value  # RPC calls
-
   ```
 
 ### Test Structure Requirements
-
 - **Class Naming**: `TestServiceNameBusinessLogic` or `TestServiceNameFunctionality`
 - **Method Naming**: `test_method_name_condition` (e.g., `test_calculate_volume_success`)
 - **Setup Pattern**: Always use `setup_method(self)` - never `setUp` or class-level setup
 - **Import Organization**: Project imports first, then test imports, then mocks
 
 ### Integration Safety Requirements
-
 - **Pre-test Validation**: Existing tests must pass before new test addition
 - **Post-test Validation**: All tests must pass after new test addition
 - **Fixture Conflicts**: No overlapping fixture names or mock patches
 - **Environment Isolation**: Tests must not affect global state or other tests
 
 ### Anti-Over-Engineering Requirements
-
 - **Maximum Complexity**: 50 lines per test method, 5 imports per file
 - **No Abstractions**: No abstract base classes, builders, or managers
 - **Direct Testing**: Test real business logic, not mock configurations
@@ -349,7 +244,6 @@ Automatically score generated and existing tests to ensure quality and prevent m
 ## Implementation Guidelines
 
 Follow Epic 4.4 simplification patterns:
-
 - Use simple functions with clear single responsibilities
 - Avoid Manager/Handler pattern complexity - keep functions focused
 - Target implementation size: ~150-200 lines total
@@ -359,18 +253,15 @@ Follow Epic 4.4 simplification patterns:
 ## ENHANCED SAFETY & ROLLBACK CAPABILITY
 
 ### Automatic Rollback System
-
 ```bash
-
 # Create safety checkpoint before any changes
-
 create_test_checkpoint() {
     CHECKPOINT_DIR=".coverage_checkpoint_$(date +%s)"
     echo "📋 Creating test checkpoint: $CHECKPOINT_DIR"
-
+    
     # Backup all test files
     cp -r tests/ "$CHECKPOINT_DIR/"
-
+    
     # Record current test state
     cd tests/
     python run_tests.py fast --no-coverage > "$CHECKPOINT_DIR/baseline_results.log" 2>&1
@@ -378,83 +269,74 @@ create_test_checkpoint() {
 }
 
 # Rollback to safe state if integration fails
-
 rollback_on_failure() {
     if [ -d "$CHECKPOINT_DIR" ]; then
         echo "🔄 ROLLBACK: Restoring test state due to integration failure"
-
+        
         # Restore test files
         rm -rf tests/
         mv "$CHECKPOINT_DIR" tests/
-
+        
         # Verify rollback worked
         cd tests/
         python run_tests.py fast --no-coverage | tail -5
-
+        
         echo "✅ Rollback completed - tests restored to working state"
     fi
 }
 
 # Cleanup checkpoint on success
-
 cleanup_checkpoint() {
     if [ -d "$CHECKPOINT_DIR" ]; then
         rm -rf "$CHECKPOINT_DIR"
         echo "🧹 Checkpoint cleaned up after successful integration"
     fi
 }
-
-```text
+```
 
 ### Test Conflict Detection System
-
 ```bash
-
 # Detect potential test conflicts before generation
-
 detect_test_conflicts() {
     echo "🔍 Scanning for potential test conflicts..."
-
+    
     # Check for fixture name collisions
     echo "Checking fixture names..."
     grep -r "@pytest.fixture" tests/ | awk '{print $2}' | sort | uniq -d
-
+    
     # Check for overlapping mock patches
     echo "Checking mock patch locations..."
     grep -r "@patch" tests/ | grep -o "'[^']*'" | sort | uniq -c | awk '$1 > 1'
-
+    
     # Check for import conflicts
     echo "Checking import patterns..."
     grep -r "from apps.api.src" tests/ | grep -o "from [^:]*" | sort | uniq -c
-
+    
     # Check for environment variable conflicts
     echo "Checking environment setup..."
     grep -r "os.environ\|setenv" tests/ | head -10
 }
 
 # Validate test integration after additions
-
 validate_test_integration() {
     echo "🛡️  Running comprehensive integration validation..."
-
+    
     # Run all tests to detect failures
     cd tests/
     python run_tests.py fast --no-coverage > /tmp/integration_check.log 2>&1
-
+    
     if [ $? -ne 0 ]; then
         echo "❌ Integration validation failed - conflicts detected"
         grep -E "FAILED|ERROR" /tmp/integration_check.log | head -10
         return 1
     fi
-
+    
     echo "✅ Integration validation passed - no conflicts detected"
     return 0
 }
-
-```text
+```
 
 ### Performance & Resource Monitoring
-
 - Include performance monitoring for coverage analysis operations (< 30 seconds)
 - Implement timeout protections for long-running analysis
 - Monitor resource usage to prevent CI/CD slowdowns
@@ -471,7 +353,7 @@ validate_test_integration() {
 
 ## Target Coverage Goals
 
-- Minimum target: 75% overall coverage
+- Minimum target: 75% overall coverage  
 - New code target: 90% coverage
 - Critical path coverage: 100% for business logic
 - Performance requirement: Reasonable response times for your application
@@ -480,22 +362,17 @@ validate_test_integration() {
 ## Command Arguments Processing
 
 Process $ARGUMENTS as mode and target:
-
 - If no arguments: mode="analyze", target=None (analyze all)
-- If one argument: check if it's a valid mode, else treat as target with mode="analyze"
+- If one argument: check if it's a valid mode, else treat as target with mode="analyze"  
 - If two arguments: first=mode, second=target
 - Validate mode is one of: analyze, improve, generate, validate
 
 ```bash
-
 # ============================================
-
 # DYNAMIC DIRECTORY DETECTION (Project-Agnostic)
-
 # ============================================
 
 # Allow environment override
-
 if [[ -n "$COVERAGE_REPORTS_DIR" ]] && [[ -d "$COVERAGE_REPORTS_DIR" || -w "$(dirname "$COVERAGE_REPORTS_DIR")" ]]; then
   REPORTS_DIR="$COVERAGE_REPORTS_DIR"
   echo "📁 Using override reports directory: $REPORTS_DIR"
@@ -529,12 +406,10 @@ else
 fi
 
 # Parse command arguments
-
 MODE="${1:-analyze}"
 TARGET="${2:-}"
 
 # Validate mode
-
 case "$MODE" in
     analyze|improve|generate|validate)
         echo "Executing /coverage $MODE $TARGET"
@@ -546,8 +421,7 @@ case "$MODE" in
         echo "Executing /coverage $MODE (analyzing target: $TARGET)"
         ;;
 esac
-
-```text
+```
 
 ## ENHANCED WORKFLOW WITH PATTERN LEARNING AND SAFETY VALIDATION
 
@@ -559,45 +433,37 @@ Based on the mode, I'll execute the corresponding coverage orchestration workflo
 ### PRE-EXECUTION SAFETY PROTOCOL
 
 **Phase 1: Pattern Learning (Automatic for generate/improve modes)**
-
 ```bash
-
 # Always learn patterns first unless in pure analyze mode
-
 if [[ "$MODE" == "generate" || "$MODE" == "improve" ]]; then
     echo "🔍 Learning existing test patterns for safe integration..."
-
+    
     # Discover test patterns
     find tests/ -name "*.py" -type f | head -20 | while read testfile; do
         echo "Analyzing patterns in: $testfile"
-        grep -E "(class Test|def test_|@pytest.fixture|from._mock|import._Mock)" "$testfile" 2>/dev/null
+        grep -E "(class Test|def test_|@pytest.fixture|from.*mock|import.*Mock)" "$testfile" 2>/dev/null
     done
-
+    
     # Document fixture usage
     echo "📋 Cataloging available fixtures..."
     grep -r "@pytest.fixture" tests/fixtures/ 2>/dev/null
-
+    
     # Check for over-engineering patterns
     echo "⚠️  Scanning for over-engineered patterns to avoid..."
-    grep -r "class._Manager\|class._Builder\|class._Factory._Factory" tests/ 2>/dev/null || echo "✅ No over-engineering detected"
-
+    grep -r "class.*Manager\|class.*Builder\|class.*Factory.*Factory" tests/ 2>/dev/null || echo "✅ No over-engineering detected"
+    
     # Save patterns to reports directory (detected earlier)
     mkdir -p "$REPORTS_DIR" 2>/dev/null
     echo "Saving learned patterns to $REPORTS_DIR/test-patterns-$(date +%Y%m%d).json"
 fi
-
-```text
+```
 
 **Phase 2: Pre-flight Validation**
-
 ```bash
-
 # Verify system state before making changes
-
 echo "🛡️  Running pre-flight safety checks..."
 
 # Ensure existing tests pass
-
 if [[ "$MODE" == "generate" || "$MODE" == "improve" ]]; then
     echo "Running existing tests to establish baseline..."
     cd tests/
@@ -605,11 +471,10 @@ if [[ "$MODE" == "generate" || "$MODE" == "improve" ]]; then
         echo "❌ ABORT: Existing tests failing. Fix these first before coverage improvements."
         exit 1
     }
-
+    
     echo "✅ Baseline test state verified - safe to proceed"
 fi
-
-```text
+```
 
 Let me execute the coverage orchestration workflow for the specified mode and target scope.
 

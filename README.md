@@ -1,22 +1,18 @@
 # CC_Agents_Commands
 
-**Version:** 1.1.0 | **Updated:** 2025-12-25 | **Author:** Ricardo
+**Version:** 1.2.0 | **Updated:** 2025-12-29 | **Author:** Ricardo
 
-A curated collection of 38 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 17 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 20 agents (specialized agents for testing, code quality, and workflow automation), and 1 skill (reusable PR operations).
+A curated collection of 51 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 18 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 31 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
 
 Whether you're managing pull requests, orchestrating CI pipelines, or following structured BMAD development cycles, these tools preserve your creative momentum by automating repetitive tasks and providing intelligent assistance exactly when you need it.
 
 ## Contents
 
 | Type | Count | Description |
-
 | ------ | ------- | ------------- |
-
-| **Commands** | 17 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
-
-| **Agents** | 20 | Specialized agents for specific tasks |
-
-| **Skills** | 1 | Reusable skill definitions |
+| **Commands** | 18 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
+| **Agents** | 31 | Specialized agents for testing, quality, BMAD, and automation |
+| **Skills** | 2 | Reusable skill definitions (PR workflows, safe refactoring) |
 
 ## Installation
 
@@ -152,6 +148,8 @@ Commands are organized by workflow moment to help you quickly find the right too
 
 | `/epic-dev-epic-end-tests` | Validates epic completion with NFR assessment | BMAD framework |
 
+| `/parallel` | Parallelizes tasks with conflict detection | — |
+
 | `/parallelize` | Parallelizes tasks across sub-agents | — |
 
 | `/parallelize-agents` | Parallelizes tasks with specialized agents | — |
@@ -232,7 +230,7 @@ Agents are organized by domain to help you quickly find the right specialist for
 
 | `pr-workflow-manager` | Manages pull request workflows via GitHub | `github` MCP |
 
-| `parallel-executor` | Executes tasks independently without delegation | — |
+| `parallel-orchestrator` | Spawns parallel agents with conflict detection | — |
 
 | `digdeep` | Performs Five Whys root cause analysis | `perplexity-ask` MCP |
 
@@ -256,16 +254,22 @@ Agents are organized by domain to help you quickly find the right specialist for
 
 | `interactive-guide` | Guides human testers through validation | project files |
 
+### BMAD Workflow
+
+| Agent | What it does | Prerequisites |
+| ------- | -------------- | --------------- |
+| `epic-story-creator` | Creates user stories from epics | BMAD framework |
+| `epic-story-validator` | Validates stories and quality gates | BMAD framework |
+| `epic-test-generator` | Generates ATDD tests for stories | BMAD framework |
+| `epic-implementer` | Implements stories (TDD GREEN phase) | BMAD framework |
+| `epic-code-reviewer` | Adversarial code review (finds 3-10 issues) | BMAD framework |
+
 ### CI/DevOps
 
 | Agent | What it does | Prerequisites |
-
 | ------- | -------------- | --------------- |
-
 | `ci-strategy-analyst` | Analyzes CI/CD pipeline issues strategically | `perplexity-ask` MCP, `exa` MCP |
-
 | `ci-infrastructure-builder` | Builds CI/CD infrastructure and workflows | `github` MCP |
-
 | `ci-documentation-generator` | Generates CI/CD documentation | CI infrastructure |
 
 ### Browser Automation
@@ -285,10 +289,9 @@ Agents are organized by domain to help you quickly find the right specialist for
 Skills leverage agents to provide natural language interfaces for complex multi-step workflows.
 
 | Skill | What it does | Prerequisites |
-
 | ------- | -------------- | --------------- |
-
 | `pr-workflow` | Manages PR workflows - create, status, merge, sync | `github` MCP (via pr-workflow-manager) |
+| `safe-refactor` | Test-safe file refactoring with facade pattern | code files in project |
 
 ## Troubleshooting
 

@@ -1,6 +1,31 @@
 # Self-Hosted macOS Runners Setup Guide
 
-**Version:** 1.0.0 | **Updated:** 2025-12-25
+**Version:** 1.1.0 | **Updated:** 2025-12-29
+
+## Quick Reference (This Machine)
+
+| Setting | Value |
+|---------|-------|
+| **Runner Name** | `macos-runner-1` |
+| **Install Path** | `~/cc-agents-runner/` |
+| **Service Name** | `actions.runner.Autopsias-claude-agents-commands.macos-runner-1` |
+
+**Quick Commands:**
+```bash
+# Check status
+cd ~/cc-agents-runner && ./svc.sh status
+
+# Start runner
+cd ~/cc-agents-runner && ./svc.sh start
+
+# Stop runner
+cd ~/cc-agents-runner && ./svc.sh stop
+
+# View logs
+tail -f ~/cc-agents-runner/_diag/Runner_*.log
+```
+
+---
 
 This guide helps you set up and maintain self-hosted macOS runners for the CC_Agents_Commands CI pipeline. Self-hosted runners provide faster execution, cost savings, and greater control over your CI/CD environment.
 

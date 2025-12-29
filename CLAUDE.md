@@ -95,3 +95,22 @@ CC_Agents_Commands/
 - **NO shared utility files** - each tool is self-contained
 - **NO modifications to tool logic** - only metadata and filename changes
 - **First-Use Test required** - 2-3 people must cold-install before release
+
+## CI Runner Quick Reference
+
+| Setting | Value |
+|---------|-------|
+| **Runner Name** | `macos-runner-1` |
+| **Install Path** | `~/cc-agents-runner/` |
+| **Service Name** | `actions.runner.Autopsias-claude-agents-commands.macos-runner-1` |
+
+```bash
+# Check status
+cd ~/cc-agents-runner && ./svc.sh status
+
+# Start runner
+cd ~/cc-agents-runner && ./svc.sh start
+
+# Stop runner
+cd ~/cc-agents-runner && ./svc.sh stop
+```

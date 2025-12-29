@@ -23,8 +23,8 @@ Follow these steps to install CC_Agents_Commands:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/ricardocarvalho/CC_Agents_Commands.git
-   cd CC_Agents_Commands
+   git clone https://github.com/Autopsias/claude-agents-commands.git
+   cd claude-agents-commands
 
    ```
 
@@ -73,41 +73,33 @@ Try these commands to experience immediate value:
 
 Generates a continuation prompt to pick up where you left off in a new session.
 
-```text
-
+```
 /nextsession
-
-```text
+```
 
 ### Check PR Status
 
 Shows your open pull requests and their current state. _Note: Enhanced with `github` MCP server for full functionality._
 
-```text
-
+```
 /pr status
-
-```text
+```
 
 ### Orchestrate Quality Checks
 
 Runs quality checks, stages changes, and creates a well-formatted commit.
 
-```text
-
+```
 /commit-orchestrate
-
-```text
+```
 
 ### The 'Aha' Moment: Auto-Fix CI Failures
 
 Analyzes CI failures, spawns parallel agents, and fixes issues automatically. _Note: Enhanced with `github` MCP server for full functionality._
 
-```text
-
+```
 /ci-orchestrate
-
-```text
+```
 
 ## CI/CD
 
@@ -148,11 +140,11 @@ Commands are organized by workflow moment to help you quickly find the right too
 
 | `/epic-dev-epic-end-tests` | Validates epic completion with NFR assessment | BMAD framework |
 
-| `/parallel` | Parallelizes tasks with conflict detection | — |
+| `/parallel` | **Recommended** - Smart parallelization with file conflict detection | — |
+| `/parallelize` | Strategy-based parallelization (file/feature/layer/test) | — |
+| `/parallelize-agents` | Routes directly to specialist fixers (type/lint/test) | — |
 
-| `/parallelize` | Parallelizes tasks across sub-agents | — |
-
-| `/parallelize-agents` | Parallelizes tasks with specialized agents | — |
+> **Which parallel command?** Use `/parallel` (recommended) for most tasks - it auto-detects conflicts and routes to specialists. Use `/parallelize` when you want explicit control over strategy. Use `/parallelize-agents` when you know exactly which fixer agents you need.
 
 ### Quality Gates
 
@@ -172,9 +164,8 @@ Commands are organized by workflow moment to help you quickly find the right too
 
 | `/test-epic-full` | Tests epic-dev-full command workflow | BMAD framework |
 
-| `/user-testing` | Facilitates user testing sessions | user testing setup |
-
-| `/usertestgates` | Finds and runs next test gate | test gates in project |
+| `/user-testing` | Facilitates user testing sessions (uses `interactive-guide` agent) | user testing setup |
+| `/usertestgates` | Finds and runs next test gate (uses `evidence-collector` agent) | test gates in project |
 
 ### Shipping
 
@@ -236,23 +227,17 @@ Agents are organized by domain to help you quickly find the right specialist for
 
 ### Testing & Strategy
 
+> **Tip:** Use `/user-testing` and `/usertestgates` commands to orchestrate these agents for user acceptance testing.
+
 | Agent | What it does | Prerequisites |
-
 | ------- | -------------- | --------------- |
-
 | `test-strategy-analyst` | Analyzes test failures with Five Whys methodology | `perplexity-ask` MCP, `exa` MCP |
-
 | `test-documentation-generator` | Generates test failure runbooks and documentation | test files in project |
-
 | `ui-test-discovery` | Discovers UI components for test generation | UI code in project |
-
 | `validation-planner` | Plans validation strategies for features | project files |
-
 | `scenario-designer` | Transforms requirements into test scenarios | project files |
-
-| `evidence-collector` | Validates and collects test evidence | project files |
-
-| `interactive-guide` | Guides human testers through validation | project files |
+| `evidence-collector` | Validates and collects test evidence (used by `/usertestgates`) | project files |
+| `interactive-guide` | Guides human testers through validation (used by `/user-testing`) | project files |
 
 ### BMAD Workflow
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**CC_Agents_Commands** is a curated collection of 23 battle-tested Claude Code extensions (11 slash commands, 11 subagents, 1 skill) designed to help developers **stay in flow**.
+**CC_Agents_Commands** is a curated collection of 51 battle-tested Claude Code extensions (18 slash commands, 31 subagents, 2 skills) designed to help developers **stay in flow**.
 
 **Core Value:** Claude Code extensions that preserve creative momentum - whether doing generic workflow tasks (PR management, CI orchestration) or structured BMAD development (epic workflows).
 
@@ -18,17 +18,22 @@ CC_Agents_Commands/
 ├── README.md                    # Single comprehensive documentation
 ├── VALIDATION.md                # Pre-release testing checklist
 ├── .gitignore
-├── commands/                    # 11 slash commands (users copy to ~/.claude/commands/)
-│   ├── pr.md, ci-orchestrate.md, test-orchestrate.md
-│   ├── commit-orchestrate.md, parallelize.md, parallelize-agents.md
-│   ├── epic-dev.md, epic-dev-full.md, epic-dev-init.md
-│   └── nextsession.md, usertestgates.md
-├── agents/                      # 11 subagents (users copy to ~/.claude/agents/)
+├── commands/                    # 18 slash commands (users copy to ~/.claude/commands/)
+│   ├── pr.md, ci-orchestrate.md, test-orchestrate.md, commit-orchestrate.md
+│   ├── parallel.md, parallelize.md, parallelize-agents.md
+│   ├── epic-dev.md, epic-dev-full.md, epic-dev-init.md, epic-dev-epic-end-tests.md
+│   ├── coverage.md, code-quality.md, create-test-plan.md, user-testing.md
+│   └── nextsession.md, usertestgates.md, test-epic-full.md
+├── agents/                      # 31 subagents (users copy to ~/.claude/agents/)
 │   ├── unit-test-fixer.md, api-test-fixer.md, database-test-fixer.md, e2e-test-fixer.md
 │   ├── linting-fixer.md, type-error-fixer.md, import-error-fixer.md, security-scanner.md
-│   └── pr-workflow-manager.md, parallel-executor.md, digdeep.md
-└── skills/                      # 1 skill (users copy to ~/.claude/skills/)
-    └── pr-workflow.md
+│   ├── epic-story-creator.md, epic-story-validator.md, epic-test-generator.md
+│   ├── epic-implementer.md, epic-code-reviewer.md
+│   ├── pr-workflow-manager.md, parallel-orchestrator.md, digdeep.md
+│   └── ... (browser executors, CI agents, testing agents)
+└── skills/                      # 2 skills (users copy to ~/.claude/skills/)
+    ├── pr-workflow/
+    └── safe-refactor.md
 ```
 
 **Important:** Distributable tools are at ROOT level, NOT in `.claude/`. Users copy these folders to their `~/.claude/` (global) or project `.claude/` folder.
@@ -90,3 +95,22 @@ CC_Agents_Commands/
 - **NO shared utility files** - each tool is self-contained
 - **NO modifications to tool logic** - only metadata and filename changes
 - **First-Use Test required** - 2-3 people must cold-install before release
+
+## CI Runner Quick Reference
+
+| Setting | Value |
+|---------|-------|
+| **Runner Name** | `macos-runner-1` |
+| **Install Path** | `~/cc-agents-runner/` |
+| **Service Name** | `actions.runner.Autopsias-claude-agents-commands.macos-runner-1` |
+
+```bash
+# Check status
+cd ~/cc-agents-runner && ./svc.sh status
+
+# Start runner
+cd ~/cc-agents-runner && ./svc.sh start
+
+# Stop runner
+cd ~/cc-agents-runner && ./svc.sh stop
+```

@@ -1,7 +1,13 @@
 ---
 name: linting-fixer
-description: "Fixes Python linting and formatting issues"
-prerequisites: "linting config in project"
+description: |
+  Fixes Python linting and formatting issues with ruff, mypy, black, and isort. Generic implementation for any Python project.
+  Use PROACTIVELY after code changes to ensure compliance before commits.
+  Examples:
+  - "ruff check failed with E501 line too long errors"
+  - "mypy found unused import violations F401"
+  - "pre-commit hooks failing with formatting issues"
+  - "complexity violations C901 need refactoring"
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, SlashCommand
 model: haiku
 color: yellow
@@ -257,6 +263,28 @@ Successfully fixed all linting and formatting issues across 2 files. Code now pa
 ```
 
 Your expertise ensures code quality for any Python project. Focus on systematic fixes that improve maintainability while preserving the project's existing patterns and functionality.
+
+## MANDATORY JSON OUTPUT FORMAT
+
+🚨 **CRITICAL**: Return ONLY this JSON format at the end of your response:
+
+```json
+{
+  "status": "fixed|partial|failed",
+  "issues_fixed": 12,
+  "files_modified": ["src/services/data_service.py", "src/api/routes.py"],
+  "remaining_issues": 0,
+  "rules_fixed": ["F401", "E501", "E302"],
+  "summary": "Removed unused imports and fixed line length violations"
+}
+```
+
+**DO NOT include:**
+- Full file contents in response
+- Verbose step-by-step execution logs
+- Multiple paragraphs of explanation
+
+This JSON format is required for orchestrator token efficiency.
 
 ## Intelligent Chain Invocation
 

@@ -1,6 +1,5 @@
 ---
-description: "Verifies BMAD project setup"
-prerequisites: "BMAD framework"
+description: "Verify BMAD project setup for epic-dev"
 argument-hint: ""
 ---
 
@@ -14,16 +13,17 @@ Verify this project is ready for epic-dev.
 
 ```bash
 PROJECT_ROOT=$(pwd)
-while [[ ! -d "$PROJECT_ROOT/.bmad" ]] && [[ "$PROJECT_ROOT" != "/" ]]; do
+while [[ ! -d "$PROJECT_ROOT/_bmad" ]] && [[ "$PROJECT_ROOT" != "/" ]]; do
   PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
 done
 
-if [[ -d "$PROJECT_ROOT/.bmad" ]]; then
+if [[ -d "$PROJECT_ROOT/_bmad" ]]; then
   echo "BMAD:$PROJECT_ROOT"
 else
   echo "NONE"
 fi
-```
+
+```text
 
 ---
 
@@ -31,7 +31,8 @@ fi
 
 ### IF BMAD Project Found
 
-```
+```text
+
 Output: "BMAD project detected: {project_root}"
 Output: ""
 Output: "Available workflows:"
@@ -49,16 +50,19 @@ IF exists:
 ELSE:
   Output: "Sprint status not found. Run:"
   Output: "  /bmad:bmm:workflows:sprint-planning"
-```
+
+```text
 
 ### IF No BMAD Project
 
-```
+```text
+
 Output: "Not a BMAD project."
 Output: ""
 Output: "Epic-dev requires a BMAD project setup."
 Output: "Initialize with: /bmad:bmm:workflows:workflow-init"
-```
+
+```text
 
 ---
 

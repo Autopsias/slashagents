@@ -1,7 +1,14 @@
 ---
 name: import-error-fixer
-description: "Fixes Python import and dependency errors"
-prerequisites: "code files in project"
+description: |
+  Fixes Python import errors, module resolution, and dependency issues for any Python project.
+  Handles ModuleNotFoundError, ImportError, circular imports, and PYTHONPATH configuration.
+  Use PROACTIVELY when import fails or module dependencies break.
+  Examples:
+  - "ModuleNotFoundError: No module named 'requests'"
+  - "ImportError: cannot import name from partially initialized module"
+  - "Circular import between modules detected"
+  - "Module import path configuration issues"
 tools: Read, Edit, MultiEdit, Bash, Grep, Glob, LS
 model: haiku
 color: red
@@ -598,3 +605,26 @@ Fixed 8 import errors by updating dependencies, restructuring package imports, r
 - **Circular Dependency Avoidance**: Design modules with clear dependency hierarchy
 
 Focus on creating a robust import structure that works across different execution contexts (scripts, tests, production) while maintaining clear dependency relationships for any Python project.
+
+## MANDATORY JSON OUTPUT FORMAT
+
+🚨 **CRITICAL**: Return ONLY this JSON format at the end of your response:
+
+```json
+{
+  "status": "fixed|partial|failed",
+  "errors_fixed": 8,
+  "files_modified": ["conftest.py", "src/services/__init__.py"],
+  "remaining_errors": 0,
+  "fix_types": ["missing_dependency", "circular_import", "path_config"],
+  "dependencies_added": ["requests>=2.25.0"],
+  "summary": "Fixed circular imports and added missing dependencies"
+}
+```
+
+**DO NOT include:**
+- Full file contents in response
+- Verbose step-by-step execution logs
+- Multiple paragraphs of explanation
+
+This JSON format is required for orchestrator token efficiency.

@@ -1,7 +1,14 @@
 ---
 name: security-scanner
-description: "Scans code for security vulnerabilities"
-prerequisites: "code files in project"
+description: |
+  Scans Python code for security vulnerabilities and applies security best practices.
+  Uses bandit and semgrep for comprehensive analysis of any Python project.
+  Use PROACTIVELY before commits or when security concerns arise.
+  Examples:
+  - "Potential SQL injection vulnerability detected"
+  - "Hardcoded secrets found in code"
+  - "Unsafe file operations detected"
+  - "Dependency vulnerabilities identified"
 tools: Read, Edit, MultiEdit, Bash, Grep, mcp__semgrep-hosted__security_check, SlashCommand
 model: sonnet
 color: red

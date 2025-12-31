@@ -1,6 +1,5 @@
 ---
-description: "Orchestrates git commit workflows"
-prerequisites: "—"
+description: "Orchestrate git commit workflows with parallel quality checks and automated staging"
 argument-hint: "[commit_message] [--stage-all] [--skip-hooks] [--quality-first] [--push-after]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---
@@ -34,6 +33,17 @@ git stash list  # Check for stashed changes
 # Check for potential commit blockers
 git log --oneline -5  # Recent commits for message pattern
 git branch --show-current  # Current branch
+```
+
+**STEP 2.5: Load Shared Project Context (Token Efficient)**
+
+```bash
+# Source shared discovery helper (uses cache if fresh)
+if [[ -f "$HOME/.claude/scripts/shared-discovery.sh" ]]; then
+    source "$HOME/.claude/scripts/shared-discovery.sh"
+    discover_project_context
+    # SHARED_CONTEXT, PROJECT_TYPE, VALIDATION_CMD now available
+fi
 ```
 
 **STEP 3: Quality Issue Detection & Agent Mapping**
@@ -207,14 +217,23 @@ Pre-Commit Workflow:
 4. Ensure files are ready for staging
 5. Report quality status for commit readiness
 
-Output Format:
-- Summary of pre-commit quality fixes completed
-- Files modified and specific issues resolved
-- Quality gates passed/failed in your domain
-- Staging readiness status
-- Any blockers preventing commit
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  "status": "fixed|partial|failed",
+  "issues_fixed": N,
+  "files_modified": ["path/to/file.py"],
+  "quality_gates_passed": true|false,
+  "staging_ready": true|false,
+  "blockers": [],
+  "summary": "Brief description of fixes"
+}
 
-Execute your commit quality fixes autonomously and report staging readiness.
+DO NOT include:
+- Full file contents
+- Verbose execution logs
+- Step-by-step descriptions
+
+Execute your commit quality fixes autonomously and report JSON summary only.
 ```
 
 **COMMIT QUALITY SPECIALIST MAPPING:**
@@ -513,3 +532,59 @@ if [[ "$CURRENT_BRANCH" != "main" ]] && [[ "$CURRENT_BRANCH" != "master" ]] && [
     fi
 fi
 ```
+
+---
+
+## Agent Quick Reference
+
+| Quality Domain | Agent | Model | JSON Output |
+|----------------|-------|-------|-------------|
+| Linting/formatting | linting-fixer | haiku | Required |
+| Security scanning | security-scanner | sonnet | Required |
+| Type errors | type-error-fixer | sonnet | Required |
+| Import errors | import-error-fixer | haiku | Required |
+| Unit tests | unit-test-fixer | sonnet | Required |
+| API tests | api-test-fixer | sonnet | Required |
+| Database tests | database-test-fixer | sonnet | Required |
+| E2E tests | e2e-test-fixer | sonnet | Required |
+| Git conflicts | general-purpose | sonnet | Required |
+
+---
+
+## Token Efficiency: JSON Output Format
+
+**ALL agents MUST return distilled JSON summaries only.**
+
+```json
+{
+  "status": "fixed|partial|failed",
+  "issues_fixed": 3,
+  "files_modified": ["path/to/file.py"],
+  "quality_gates_passed": true,
+  "staging_ready": true,
+  "summary": "Brief description of fixes"
+}
+```
+
+**DO NOT return:**
+- Full file contents
+- Verbose explanations
+- Step-by-step execution logs
+
+This reduces token usage by 80-90% per agent response.
+
+---
+
+## Model Strategy
+
+| Agent Type | Model | Rationale |
+|------------|-------|-----------|
+| linting-fixer, import-error-fixer | haiku | Simple pattern matching |
+| security-scanner | sonnet | Security analysis complexity |
+| All test fixers | sonnet | Balanced speed + quality |
+| type-error-fixer | sonnet | Type inference complexity |
+| general-purpose | sonnet | Varied task complexity |
+
+---
+
+EXECUTE NOW. Start with STEP 1 (parse arguments).

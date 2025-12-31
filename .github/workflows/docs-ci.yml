@@ -35,9 +35,16 @@ jobs:
   # ============================================
   markdown-lint:
     name: Markdown Linting
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, self-hosted-macos]
     timeout-minutes: 5
     steps:
+      - name: Pre-job cleanup
+        run: |
+          echo "Cleaning workspace..."
+          rm -rf "${GITHUB_WORKSPACE:-$PWD}"/* "${GITHUB_WORKSPACE:-$PWD}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -67,14 +74,30 @@ jobs:
           echo "Markdown linting complete"
           echo "Files checked: agents/, commands/, skills/, README.md"
 
+      - name: Post-job cleanup
+        if: always()
+        run: |
+          echo "Cleaning workspace after job..."
+          cd /
+          rm -rf "${GITHUB_WORKSPACE}"/* "${GITHUB_WORKSPACE}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* /tmp/npm-* 2>/dev/null || true
+
   # ============================================
   # Stage 2: Link Validation
   # ============================================
   link-check:
     name: Link Validation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, self-hosted-macos]
     timeout-minutes: 10
     steps:
+      - name: Pre-job cleanup
+        run: |
+          echo "Cleaning workspace..."
+          rm -rf "${GITHUB_WORKSPACE:-$PWD}"/* "${GITHUB_WORKSPACE:-$PWD}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -106,23 +129,38 @@ jobs:
         if: always()
         run: echo "Link validation complete"
 
+      - name: Post-job cleanup
+        if: always()
+        run: |
+          echo "Cleaning workspace after job..."
+          cd /
+          rm -rf "${GITHUB_WORKSPACE}"/* "${GITHUB_WORKSPACE}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* /tmp/npm-* 2>/dev/null || true
+
   # ============================================
   # Stage 3: Shell Script Validation
   # ============================================
   shellcheck:
     name: Shell Script Linting
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, self-hosted-macos]
     timeout-minutes: 5
     steps:
+      - name: Pre-job cleanup
+        run: |
+          echo "Cleaning workspace..."
+          rm -rf "${GITHUB_WORKSPACE:-$PWD}"/* "${GITHUB_WORKSPACE:-$PWD}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          scandir: './tests'
-          severity: warning
-        continue-on-error: true # Non-blocking initially
+        run: |
+          echo "Running ShellCheck on test scripts..."
+          shellcheck tests/*.sh --severity=warning || true
+        continue-on-error: true
 
       - name: Check executable permissions
         run: |
@@ -137,14 +175,30 @@ jobs:
             fi
           done
 
+      - name: Post-job cleanup
+        if: always()
+        run: |
+          echo "Cleaning workspace after job..."
+          cd /
+          rm -rf "${GITHUB_WORKSPACE}"/* "${GITHUB_WORKSPACE}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* /tmp/npm-* 2>/dev/null || true
+
   # ============================================
   # Stage 4: File Structure Validation
   # ============================================
   structure-check:
     name: File Structure Validation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, self-hosted-macos]
     timeout-minutes: 3
     steps:
+      - name: Pre-job cleanup
+        run: |
+          echo "Cleaning workspace..."
+          rm -rf "${GITHUB_WORKSPACE:-$PWD}"/* "${GITHUB_WORKSPACE:-$PWD}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -179,15 +233,15 @@ jobs:
           echo "Checking distributable directories..."
 
           # Check agents directory
-          agent_count=$(find agents -name "*.md" -type f 2>/dev/null | wc -l)
+          agent_count=$(find agents -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
           echo "agents/: $agent_count markdown files"
 
           # Check commands directory
-          command_count=$(find commands -name "*.md" -type f 2>/dev/null | wc -l)
+          command_count=$(find commands -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
           echo "commands/: $command_count markdown files"
 
           # Check skills directory
-          skill_count=$(find skills -name "*.md" -type f 2>/dev/null | wc -l)
+          skill_count=$(find skills -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
           echo "skills/: $skill_count markdown files"
 
           # Validate minimum content
@@ -229,14 +283,30 @@ jobs:
           fi
           echo "OK: All files follow kebab-case naming"
 
+      - name: Post-job cleanup
+        if: always()
+        run: |
+          echo "Cleaning workspace after job..."
+          cd /
+          rm -rf "${GITHUB_WORKSPACE}"/* "${GITHUB_WORKSPACE}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* /tmp/npm-* 2>/dev/null || true
+
   # ============================================
   # Stage 5: Content Validation
   # ============================================
   content-check:
     name: Content Validation
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, self-hosted-macos]
     timeout-minutes: 5
     steps:
+      - name: Pre-job cleanup
+        run: |
+          echo "Cleaning workspace..."
+          rm -rf "${GITHUB_WORKSPACE:-$PWD}"/* "${GITHUB_WORKSPACE:-$PWD}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -274,15 +344,31 @@ jobs:
 
           echo "Hardcoded path scan complete"
 
+      - name: Post-job cleanup
+        if: always()
+        run: |
+          echo "Cleaning workspace after job..."
+          cd /
+          rm -rf "${GITHUB_WORKSPACE}"/* "${GITHUB_WORKSPACE}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* /tmp/npm-* 2>/dev/null || true
+
   # ============================================
   # Summary Job
   # ============================================
   ci-summary:
     name: CI Summary
     needs: [markdown-lint, link-check, shellcheck, structure-check, content-check]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, macOS, self-hosted-macos]
     if: always()
     steps:
+      - name: Pre-job cleanup
+        run: |
+          echo "Cleaning workspace..."
+          rm -rf "${GITHUB_WORKSPACE:-$PWD}"/* "${GITHUB_WORKSPACE:-$PWD}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* 2>/dev/null || true
+
       - name: Check job results
         run: |
           echo "================================================"
@@ -302,3 +388,12 @@ jobs:
             echo "CRITICAL: Structure validation failed"
             exit 1
           fi
+
+      - name: Post-job cleanup
+        if: always()
+        run: |
+          echo "Cleaning workspace after job..."
+          cd /
+          rm -rf "${GITHUB_WORKSPACE}"/* "${GITHUB_WORKSPACE}"/.[!.]* 2>/dev/null || true
+          rm -rf "${RUNNER_TEMP:-/tmp/runner}"/* 2>/dev/null || true
+          rm -rf /tmp/actions-* /tmp/npm-* 2>/dev/null || true

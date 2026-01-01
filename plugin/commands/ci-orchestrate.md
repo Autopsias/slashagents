@@ -419,11 +419,9 @@ echo "📋 VALIDATION_CMD=${VALIDATION_CMD:-pnpm prepush}"
 - Database integration test failures → database-test-fixer
 - End-to-end workflow failures → e2e-test-fixer
 
-**SECURITY & PERFORMANCE FAILURES:**
+**SECURITY FAILURES:**
 - Security vulnerability detection → security-scanner
-- Performance regression detection → performance-test-fixer
 - Dependency vulnerabilities → security-scanner
-- Load testing failures → performance-test-fixer
 
 **INFRASTRUCTURE FAILURES:**
 - GitHub Actions workflow syntax → general-purpose (workflow config)
@@ -466,9 +464,8 @@ MANDATORY REQUIREMENT: Launch multiple Task agents simultaneously using batch di
 
 EXECUTION METHOD - Use multiple Task tool calls in ONE message:
 - Task(subagent_type="linting-fixer", description="Fix CI linting failures", prompt="Detailed linting fix instructions")
-- Task(subagent_type="api-test-fixer", description="Fix API test failures", prompt="Detailed API test fix instructions") 
+- Task(subagent_type="api-test-fixer", description="Fix API test failures", prompt="Detailed API test fix instructions")
 - Task(subagent_type="security-scanner", description="Resolve security vulnerabilities", prompt="Detailed security fix instructions")
-- Task(subagent_type="performance-test-fixer", description="Fix performance regressions", prompt="Detailed performance fix instructions")
 - [Additional specialized agents as needed]
 
 ⚠️ CRITICAL: NEVER execute Task calls sequentially - they MUST all be in a single message batch
@@ -536,7 +533,6 @@ Execute your CI domain fixes autonomously and report JSON summary only.
 - import-error-fixer: Module import, dependency CI failures
 - unit-test-fixer: Business logic test, pytest CI failures
 - security-scanner: Vulnerability scans, secrets detection CI failures
-- performance-test-fixer: Performance benchmarks, load testing CI failures
 - e2e-test-fixer: End-to-end workflow, integration CI failures
 - general-purpose: Infrastructure, workflow config CI issues
 

@@ -28,16 +28,15 @@ Determine which specialized agent types would be most effective:
 - `database-test-fixer` - For database connections, fixtures, SQL, Supabase issues
 - `unit-test-fixer` - For pytest failures, assertions, mocks, test logic
 
-**Workflow agents:**
+**Workflow commands:**
 
-- `commit-orchestrator` - For git commits, staging, pre-commit hooks, quality gates
-- `ci-workflow-orchestrator` - For CI/CD failures, GitHub Actions, pipeline issues
+- `/commit_orchestrate` - For git commits, staging, pre-commit hooks, quality gates
+- `/ci_orchestrate` - For CI/CD failures, GitHub Actions, pipeline issues
 
 **Investigation agents:**
 
 - `digdeep` - For root cause analysis, mysterious failures, complex debugging
 - `security-scanner` - For vulnerabilities, OWASP compliance, secrets detection
-- `performance-test-fixer` - For load tests, response times, benchmarks
 - `e2e-test-fixer` - For end-to-end workflows, integration tests
 
 **Fallback:**
@@ -116,11 +115,10 @@ After specialized agents complete:
 - **API tests** → `api-test-fixer`
 - **Database tests** → `database-test-fixer`
 - **Unit tests** → `unit-test-fixer`
-- **Git commits** → `commit-orchestrator`
-- **CI/CD** → `ci-workflow-orchestrator`
+- **Git commits** → `/commit_orchestrate` (command)
+- **CI/CD** → `/ci_orchestrate` (command)
 - **Deep investigation** → `digdeep`
 - **Security** → `security-scanner`
-- **Performance** → `performance-test-fixer`
 - **E2E tests** → `e2e-test-fixer`
 - **Independent tasks** → `parallel-executor`
 - **Complex coordination** → `general-purpose`

@@ -25,7 +25,9 @@
 #     * Domain boundary enforcement (agents in correct categories only)
 #     * Table robustness (multi-hyphen names, MCP names with hyphens)
 
-README_PATH="/Users/ricardocarvalho/CC_Agents_Commands/README.md"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+README_PATH="${PROJECT_ROOT}/README.md"
 PASSED=0
 FAILED=0
 TOTAL=0
@@ -324,7 +326,7 @@ run_test "EC4.2" "[P2] All table rows have 4 pipes (3 columns)" \
 # Check each expected agent file exists
 ALL_AGENTS_EXIST=true
 for agent in unit-test-fixer api-test-fixer database-test-fixer e2e-test-fixer linting-fixer type-error-fixer import-error-fixer security-scanner pr-workflow-manager parallel-executor digdeep; do
-    if [ ! -f "/Users/ricardocarvalho/CC_Agents_Commands/agents/${agent}.md" ]; then
+    if [ ! -f "${PROJECT_ROOT}/agents/${agent}.md" ]; then
         ALL_AGENTS_EXIST=false
         break
     fi

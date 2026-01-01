@@ -25,7 +25,9 @@
 #     * No external support first
 #     * Section positioning
 
-README_PATH="/Users/ricardocarvalho/CC_Agents_Commands/README.md"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+README_PATH="${PROJECT_ROOT}/README.md"
 PASSED=0
 FAILED=0
 TOTAL=0

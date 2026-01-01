@@ -15,8 +15,8 @@ TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
 
-# Project root
-PROJECT_ROOT="/Users/ricardocarvalho/CC_Agents_Commands"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 AGENTS_DIR="$PROJECT_ROOT/agents"
 
 # Helper function to run a test

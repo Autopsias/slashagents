@@ -15,8 +15,8 @@ NC='\033[0m' # No Color
 PASS_COUNT=0
 FAIL_COUNT=0
 
-# Project root
-PROJECT_ROOT="/Users/ricardocarvalho/CC_Agents_Commands"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 README_FILE="${PROJECT_ROOT}/README.md"
 
 echo "=============================================="

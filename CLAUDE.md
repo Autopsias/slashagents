@@ -88,6 +88,7 @@ CC_Agents_Commands/
 - `docs/architecture.md` - Architectural decisions and patterns
 - `docs/epics.md` - 4 epics, 22 stories for implementation
 - `docs/project_context.md` - Critical rules for AI agents
+- `docs/BMAD-SYNC.md` - **How to sync with BMAD-METHOD PR #1213**
 
 ## Critical Rules
 

@@ -1,0 +1,14 @@
+{
+  "name": "cc-agents-commands",
+  "version": "1.3.0",
+  "description": "55 battle-tested Claude Code extensions (18 commands, 35 agents, 2 skills)",
+  "author": "Ricardo",
+  "license": "MIT",
+  "repository": "https://github.com/Autopsias/claude-agents-commands",
+  "keywords": ["claude-code", "agents", "commands", "workflow", "automation"],
+  "documentation": {
+    "setup": "See MCP_SETUP.md for MCP server configuration and API key setup",
+    "hooks": "See MCP_SETUP.md 'Event Hooks' section or hooks.json for automation workflow configuration",
+    "readme": "../README.md"
+  }
+}

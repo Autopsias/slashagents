@@ -1,8 +1,8 @@
 # CC_Agents_Commands
 
-**Version:** 1.2.0 | **Updated:** 2025-12-29 | **Author:** Ricardo
+**Version:** 1.3.0 | **Updated:** 2025-12-31 | **Author:** Ricardo
 
-A curated collection of 51 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 18 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 31 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
+A curated collection of 55 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 18 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 35 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
 
 Whether you're managing pull requests, orchestrating CI pipelines, or following structured BMAD development cycles, these tools preserve your creative momentum by automating repetitive tasks and providing intelligent assistance exactly when you need it.
 
@@ -11,28 +11,79 @@ Whether you're managing pull requests, orchestrating CI pipelines, or following 
 | Type | Count | Description |
 | ------ | ------- | ------------- |
 | **Commands** | 18 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
-| **Agents** | 31 | Specialized agents for testing, quality, BMAD, and automation |
+| **Agents** | 35 | Specialized agents for testing, quality, BMAD, and automation |
 | **Skills** | 2 | Reusable skill definitions (PR workflows, safe refactoring) |
+
+> **Note:** Plugin installation includes 18 command aliases for convenience (e.g., `/pr` instead of `/cc-agents-commands:pr`).
+
+## Prerequisites
+
+Before installing CC_Agents_Commands, ensure you have:
+
+- **Required:**
+  - [Claude Code CLI](https://claude.ai/code) installed and working
+
+- **Optional (enhances specific tools):**
+  - **MCP servers** - Some commands require MCP servers (e.g., `github` MCP for `/pr` and `/ci-orchestrate`). See [plugin/MCP_SETUP.md](plugin/MCP_SETUP.md) for detailed MCP server configuration.
+  - **BMAD framework** - Required for epic development workflows (`/epic-dev`, `/epic-dev-full`, `/epic-dev-init`). Install from [BMAD repository](https://github.com/codevalley/BMAD).
 
 ## Installation
 
-> ⚠️ **Warning:** If you have existing commands in `~/.claude/`, back them up first. New files with the same name will overwrite existing ones.
+Choose your installation method based on your needs:
 
-Follow these steps to install CC_Agents_Commands:
+| Method | Command | Scope | Pros | Cons | Best For |
+| ------ | ------- | ----- | ---- | ---- | -------- |
+| **Plugin Install** (Recommended) | `claude --plugin-dir ./plugin` | Project-local | Single command, includes MCP configs, auto-loads aliases, includes utility scripts | Requires staying in project directory | Most users, quick setup, full feature access |
+| **File Install** (Alternative) | `cp -r commands/ ~/.claude/commands/` etc. | Global or project | Full control, works anywhere, no plugin dependencies | Manual copy steps, no MCP auto-config, no aliases | Power users, custom setups, selective tool installation |
+
+> **Note:** Plugin Install automatically configures MCP servers and command aliases. File Install requires manual MCP setup.
+
+### Recommended: Plugin Install
+
+The easiest way to get started with all features enabled:
 
 1. **Clone the repository**
 
    ```bash
    git clone https://github.com/Autopsias/claude-agents-commands.git
    cd claude-agents-commands
+   ```
 
+2. **Install as plugin**
+
+   ```bash
+   claude --plugin-dir ./plugin
+   ```
+
+   This single command loads all 55 extensions (18 commands, 35 agents, 2 skills) plus:
+   - 18 command aliases for convenience (e.g., `/pr` instead of `/cc-agents-commands:pr`)
+   - MCP server configurations (.mcp.json)
+   - Event hooks (hooks.json)
+   - Utility scripts
+
+3. **Verify installation**
+
+   In your Claude Code session, type `/help` and you should see the installed commands.
+
+> **Tip:** For MCP server configuration and advanced features, see [plugin/MCP_SETUP.md](plugin/MCP_SETUP.md).
+
+### Alternative: File Install (Power Users)
+
+For users who prefer manual installation with full control:
+
+> ⚠️ **Warning:** If you have existing commands in `~/.claude/`, back them up first. New files with the same name will overwrite existing ones.
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/Autopsias/claude-agents-commands.git
+   cd claude-agents-commands
    ```
 
 2. **Backup existing commands** (if any exist)
 
    ```bash
    cp -r ~/.claude ~/.claude.backup
-
    ```
 
 3. **Copy tools to your target location**
@@ -45,7 +96,6 @@ Follow these steps to install CC_Agents_Commands:
    cp -r commands/ ~/.claude/commands/
    cp -r agents/ ~/.claude/agents/
    cp -r skills/ ~/.claude/skills/
-
    ```
 
    **Project installation** (`.claude/`) - recommended for team projects:
@@ -54,7 +104,6 @@ Follow these steps to install CC_Agents_Commands:
    cp -r commands/ .claude/commands/
    cp -r agents/ .claude/agents/
    cp -r skills/ .claude/skills/
-
    ```
 
 4. **Start a new Claude Code session**
@@ -65,6 +114,8 @@ Follow these steps to install CC_Agents_Commands:
 
    In your Claude Code session, type `/help` and you should see your installed commands listed.
 
+> **Note:** File Install does not include MCP configurations or command aliases. You'll need to configure MCP servers manually and use full command names (e.g., `/commit-orchestrate` instead of `/commit`).
+
 ## Quick Start
 
 Try these commands to experience immediate value:
@@ -73,7 +124,7 @@ Try these commands to experience immediate value:
 
 Generates a continuation prompt to pick up where you left off in a new session.
 
-```
+```bash
 /nextsession
 ```
 
@@ -81,7 +132,7 @@ Generates a continuation prompt to pick up where you left off in a new session.
 
 Shows your open pull requests and their current state. _Note: Enhanced with `github` MCP server for full functionality._
 
-```
+```bash
 /pr status
 ```
 
@@ -89,7 +140,7 @@ Shows your open pull requests and their current state. _Note: Enhanced with `git
 
 Runs quality checks, stages changes, and creates a well-formatted commit.
 
-```
+```bash
 /commit-orchestrate
 ```
 
@@ -97,7 +148,7 @@ Runs quality checks, stages changes, and creates a well-formatted commit.
 
 Analyzes CI failures, spawns parallel agents, and fixes issues automatically. _Note: Enhanced with `github` MCP server for full functionality._
 
-```
+```bash
 /ci-orchestrate
 ```
 
@@ -106,6 +157,7 @@ Analyzes CI failures, spawns parallel agents, and fixes issues automatically. _N
 This project uses self-hosted macOS runners for continuous integration. See [docs/SELF_HOSTED_RUNNERS.md](docs/SELF_HOSTED_RUNNERS.md) for runner setup and maintenance instructions.
 
 **Pipeline:** `.github/workflows/docs-ci.yml`
+
 - Markdown linting (markdownlint-cli2)
 - Link validation (markdown-link-check)
 - Shell script linting (ShellCheck)
@@ -121,25 +173,17 @@ Commands are organized by workflow moment to help you quickly find the right too
 ### Starting Work
 
 | Command | What it does | Prerequisites |
-
 | --------- | -------------- | --------------- |
-
 | `/nextsession` | Generates continuation prompt for next session | — |
-
 | `/epic-dev-init` | Verifies BMAD project setup for epic development | BMAD framework |
 
 ### Building
 
 | Command | What it does | Prerequisites |
-
 | --------- | -------------- | --------------- |
-
 | `/epic-dev` | Automates BMAD development cycle for epic stories | BMAD framework |
-
 | `/epic-dev-full` | Executes full TDD/ATDD-driven BMAD development | BMAD framework |
-
 | `/epic-dev-epic-end-tests` | Validates epic completion with NFR assessment | BMAD framework |
-
 | `/parallel` | **Recommended** - Smart parallelization with file conflict detection | — |
 | `/parallelize` | Strategy-based parallelization (file/feature/layer/test) | — |
 | `/parallelize-agents` | Routes directly to specialist fixers (type/lint/test) | — |
@@ -149,32 +193,21 @@ Commands are organized by workflow moment to help you quickly find the right too
 ### Quality Gates
 
 | Command | What it does | Prerequisites |
-
 | --------- | -------------- | --------------- |
-
 | `/ci-orchestrate` | Orchestrates CI failure analysis and fixes | `github` MCP |
-
 | `/test-orchestrate` | Orchestrates test failure analysis and fixes | test files and results |
-
 | `/code-quality` | Analyzes and fixes code quality issues | code files in project |
-
 | `/coverage` | Orchestrates test coverage improvement | test coverage tools |
-
 | `/create-test-plan` | Creates comprehensive test plans | project documentation |
-
 | `/test-epic-full` | Tests epic-dev-full command workflow | BMAD framework |
-
 | `/user-testing` | Facilitates user testing sessions (uses `interactive-guide` agent) | user testing setup |
 | `/usertestgates` | Finds and runs next test gate (uses `evidence-collector` agent) | test gates in project |
 
 ### Shipping
 
 | Command | What it does | Prerequisites |
-
 | --------- | -------------- | --------------- |
-
 | `/pr` | Manages pull request workflows | `github` MCP |
-
 | `/commit-orchestrate` | Orchestrates git commit with quality checks | — |
 
 ## Agents Reference
@@ -184,45 +217,29 @@ Agents are organized by domain to help you quickly find the right specialist for
 ### Test Fixers
 
 | Agent | What it does | Prerequisites |
-
 | ------- | -------------- | --------------- |
-
 | `unit-test-fixer` | Fixes Python test failures for pytest and unittest | test files in project |
-
 | `api-test-fixer` | Fixes API endpoint test failures | API test files in project |
-
 | `database-test-fixer` | Fixes database mock and integration test failures | database test files in project |
-
 | `e2e-test-fixer` | Fixes Playwright E2E test failures | E2E test files in project |
 
 ### Code Quality
 
 | Agent | What it does | Prerequisites |
-
 | ------- | -------------- | --------------- |
-
 | `linting-fixer` | Fixes Python linting and formatting issues | linting config in project |
-
 | `type-error-fixer` | Fixes Python type errors and annotations | Python/TypeScript project |
-
 | `import-error-fixer` | Fixes Python import and dependency errors | code files in project |
-
 | `security-scanner` | Scans code for security vulnerabilities | code files in project |
-
 | `code-quality-analyzer` | Analyzes code quality metrics and patterns | code files in project |
-
 | `requirements-analyzer` | Analyzes and validates project requirements | project documentation |
 
 ### Workflow Support
 
 | Agent | What it does | Prerequisites |
-
 | ------- | -------------- | --------------- |
-
 | `pr-workflow-manager` | Manages pull request workflows via GitHub | `github` MCP |
-
 | `parallel-orchestrator` | Spawns parallel agents with conflict detection | — |
-
 | `digdeep` | Performs Five Whys root cause analysis | `perplexity-ask` MCP |
 
 ### Testing & Strategy
@@ -246,7 +263,10 @@ Agents are organized by domain to help you quickly find the right specialist for
 | `epic-story-creator` | Creates user stories from epics | BMAD framework |
 | `epic-story-validator` | Validates stories and quality gates | BMAD framework |
 | `epic-test-generator` | Generates ATDD tests for stories | BMAD framework |
+| `epic-atdd-writer` | Generates failing acceptance tests (TDD RED phase) | BMAD framework |
 | `epic-implementer` | Implements stories (TDD GREEN phase) | BMAD framework |
+| `epic-test-expander` | Expands test coverage after implementation | BMAD framework |
+| `epic-test-reviewer` | Reviews test quality against best practices | BMAD framework |
 | `epic-code-reviewer` | Adversarial code review (finds 3-10 issues) | BMAD framework |
 
 ### CI/DevOps
@@ -287,7 +307,7 @@ The Prerequisites column uses `—` for standalone tools, `server-name` MCP for 
 Configure the required MCP server in your Claude settings (e.g., `github` or `perplexity-ask`). Check the Prerequisites column in reference tables above to see which tools require MCP servers. Then restart Claude Code to apply the changes.
 
 **BMAD commands not found?**
-Install the BMAD framework from https://github.com/BESTRobotics/BMAD before using `/epic-dev`, `/epic-dev-full`, or `/epic-dev-init` commands. See BMAD documentation for installation instructions.
+Install the BMAD framework from [BMAD repository](https://github.com/codevalley/BMAD) before using `/epic-dev`, `/epic-dev-full`, or `/epic-dev-init` commands. See BMAD documentation for installation instructions.
 
 **Command or agent not recognized?**
 Verify files are in the correct location (`~/.claude/` for global or `.claude/` for project). Then start a new Claude Code session (commands load automatically). Ensure you are in an active Claude Code session, not a regular terminal.

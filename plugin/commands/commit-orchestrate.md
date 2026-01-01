@@ -39,12 +39,7 @@ git branch --show-current  # Current branch
 
 ```bash
 # Source shared discovery helper (uses cache if fresh)
-# Try plugin location first, fallback to global installation
-if [[ -n "${CLAUDE_PLUGIN_ROOT}" && -f "${CLAUDE_PLUGIN_ROOT}/scripts/shared-discovery.sh" ]]; then
-    source "${CLAUDE_PLUGIN_ROOT}/scripts/shared-discovery.sh"
-    discover_project_context
-    # SHARED_CONTEXT, PROJECT_TYPE, VALIDATION_CMD now available
-elif [[ -f "$HOME/.claude/scripts/shared-discovery.sh" ]]; then
+if [[ -f "$HOME/.claude/scripts/shared-discovery.sh" ]]; then
     source "$HOME/.claude/scripts/shared-discovery.sh"
     discover_project_context
     # SHARED_CONTEXT, PROJECT_TYPE, VALIDATION_CMD now available

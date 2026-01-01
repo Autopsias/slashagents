@@ -2,7 +2,7 @@
 
 **Version:** 1.3.0 | **Updated:** 2025-12-31 | **Author:** Ricardo
 
-A curated collection of 55 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 18 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 35 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
+A curated collection of 53 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 16 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 35 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
 
 Whether you're managing pull requests, orchestrating CI pipelines, or following structured BMAD development cycles, these tools preserve your creative momentum by automating repetitive tasks and providing intelligent assistance exactly when you need it.
 
@@ -10,11 +10,11 @@ Whether you're managing pull requests, orchestrating CI pipelines, or following 
 
 | Type | Count | Description |
 | ------ | ------- | ------------- |
-| **Commands** | 18 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
+| **Commands** | 16 | Slash commands for workflows (`/pr`, `/ci-orchestrate`, etc.) |
 | **Agents** | 35 | Specialized agents for testing, quality, BMAD, and automation |
 | **Skills** | 2 | Reusable skill definitions (PR workflows, safe refactoring) |
 
-> **Note:** Plugin installation includes 18 command aliases for convenience (e.g., `/pr` instead of `/cc-agents-commands:pr`).
+> **Note:** Plugin installation includes 16 command aliases for convenience (e.g., `/pr` instead of `/cc-agents-commands:pr`).
 
 ## Prerequisites
 
@@ -55,8 +55,8 @@ The easiest way to get started with all features enabled:
    claude --plugin-dir ./plugin
    ```
 
-   This single command loads all 55 extensions (18 commands, 35 agents, 2 skills) plus:
-   - 18 command aliases for convenience (e.g., `/pr` instead of `/cc-agents-commands:pr`)
+   This single command loads all 53 extensions (16 commands, 35 agents, 2 skills) plus:
+   - 16 command aliases for convenience (e.g., `/pr` instead of `/cc-agents-commands:pr`)
    - MCP server configurations (.mcp.json)
    - Event hooks (hooks.json)
    - Utility scripts
@@ -184,11 +184,7 @@ Commands are organized by workflow moment to help you quickly find the right too
 | `/epic-dev` | Automates BMAD development cycle for epic stories | BMAD framework |
 | `/epic-dev-full` | Executes full TDD/ATDD-driven BMAD development | BMAD framework |
 | `/epic-dev-epic-end-tests` | Validates epic completion with NFR assessment | BMAD framework |
-| `/parallel` | **Recommended** - Smart parallelization with file conflict detection | — |
-| `/parallelize` | Strategy-based parallelization (file/feature/layer/test) | — |
-| `/parallelize-agents` | Routes directly to specialist fixers (type/lint/test) | — |
-
-> **Which parallel command?** Use `/parallel` (recommended) for most tasks - it auto-detects conflicts and routes to specialists. Use `/parallelize` when you want explicit control over strategy. Use `/parallelize-agents` when you know exactly which fixer agents you need.
+| `/parallel` | Smart parallelization with file conflict detection and specialist routing | — |
 
 ### Quality Gates
 

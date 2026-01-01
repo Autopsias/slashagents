@@ -64,7 +64,7 @@ Orchestrate specialist agents based on gap analysis with pattern-aware fixes:
 - **Pre-flight Validation**: Verify existing tests pass before agent coordination
 - Run gap analysis to identify improvement opportunities
 - **Pattern-Aware Agent Instructions**: Provide learned patterns to specialist agents for safe integration
-- Determine appropriate specialist agents (unit-test-fixer, api-test-fixer, database-test-fixer, e2e-test-fixer)
+- Determine appropriate specialist agents (unit-test-fixer, api-test-fixer, database-test-fixer, e2e-test-fixer, performance-test-fixer)
 - **Anti-Over-Engineering Enforcement**: Instruct agents to avoid complex patterns and use simple approaches
 - Use Task tool to spawn agents in parallel coordination with pattern compliance requirements
 - **Post-flight Validation**: Verify no existing tests broken after agent fixes

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**CC_Agents_Commands** is a curated collection of 51 battle-tested Claude Code extensions (18 slash commands, 31 subagents, 2 skills) designed to help developers **stay in flow**.
+**CC_Agents_Commands** is a curated collection of 53 battle-tested Claude Code extensions (16 slash commands, 35 subagents, 2 skills) designed to help developers **stay in flow**.
 
 **Core Value:** Claude Code extensions that preserve creative momentum - whether doing generic workflow tasks (PR management, CI orchestration) or structured BMAD development (epic workflows).
 
@@ -18,13 +18,13 @@ CC_Agents_Commands/
 ├── README.md                    # Single comprehensive documentation
 ├── VALIDATION.md                # Pre-release testing checklist
 ├── .gitignore
-├── commands/                    # 18 slash commands (users copy to ~/.claude/commands/)
+├── commands/                    # 16 slash commands (users copy to ~/.claude/commands/)
 │   ├── pr.md, ci-orchestrate.md, test-orchestrate.md, commit-orchestrate.md
-│   ├── parallel.md, parallelize.md, parallelize-agents.md
-│   ├── epic-dev.md, epic-dev-full.md, epic-dev-init.md, epic-dev-epic-end-tests.md
-│   ├── coverage.md, code-quality.md, create-test-plan.md, user-testing.md
-│   └── nextsession.md, usertestgates.md, test-epic-full.md
-├── agents/                      # 31 subagents (users copy to ~/.claude/agents/)
+│   ├── parallel.md, epic-dev.md, epic-dev-full.md, epic-dev-init.md
+│   ├── epic-dev-epic-end-tests.md, coverage.md, code-quality.md
+│   ├── create-test-plan.md, user-testing.md, nextsession.md
+│   └── usertestgates.md, test-epic-full.md
+├── agents/                      # 35 subagents (users copy to ~/.claude/agents/)
 │   ├── unit-test-fixer.md, api-test-fixer.md, database-test-fixer.md, e2e-test-fixer.md
 │   ├── linting-fixer.md, type-error-fixer.md, import-error-fixer.md, security-scanner.md
 │   ├── epic-story-creator.md, epic-story-validator.md, epic-test-generator.md

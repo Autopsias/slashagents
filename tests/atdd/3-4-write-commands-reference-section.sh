@@ -22,7 +22,9 @@
 #     * Cross-reference validation (file existence, command counts)
 #     * Formatting consistency (table structure, spacing)
 
-README_PATH="/Users/ricardocarvalho/CC_Agents_Commands/README.md"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+README_PATH="${PROJECT_ROOT}/README.md"
 PASSED=0
 FAILED=0
 TOTAL=0
@@ -330,7 +332,7 @@ run_test "EC4.3" "[P2] No trailing whitespace in table cells" \
 
 # [P1] EC4.4: All command names match actual files in commands/ directory
 run_test "EC4.4" "[P1] Command names match actual files" \
-    "for cmd in \$(echo \"\$COMMANDS_SECTION\" | grep -oE '/[a-z-]+' | sort -u | sed 's|^/||'); do [ -f \"/Users/ricardocarvalho/CC_Agents_Commands/commands/\${cmd}.md\" ] || exit 1; done" || true
+    "for cmd in \$(echo \"\$COMMANDS_SECTION\" | grep -oE '/[a-z-]+' | sort -u | sed 's|^/||'); do [ -f \"${PROJECT_ROOT}/commands/\${cmd}.md\" ] || exit 1; done" || true
 
 # [P2] EC4.5: Description column not empty for any command
 run_test "EC4.5" "[P2] All commands have non-empty descriptions" \

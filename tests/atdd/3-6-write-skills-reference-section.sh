@@ -20,8 +20,10 @@
 #     * Prerequisites notation (MCP format)
 #     * Quality checks (duplicates, file existence, alignment, kebab-case)
 
-README_PATH="/Users/ricardocarvalho/CC_Agents_Commands/README.md"
-SKILLS_DIR="/Users/ricardocarvalho/CC_Agents_Commands/skills"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+README_PATH="${PROJECT_ROOT}/README.md"
+SKILLS_DIR="${PROJECT_ROOT}/skills"
 PASSED=0
 FAILED=0
 TOTAL=0

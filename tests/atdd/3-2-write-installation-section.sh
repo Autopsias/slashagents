@@ -5,7 +5,9 @@
 # Usage: ./tests/atdd/3-2-write-installation-section.sh
 # Exit: 0 if all tests pass, 1 if any test fails
 
-README_PATH="/Users/ricardocarvalho/CC_Agents_Commands/README.md"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+README_PATH="${PROJECT_ROOT}/README.md"
 PASSED=0
 FAILED=0
 TOTAL=0

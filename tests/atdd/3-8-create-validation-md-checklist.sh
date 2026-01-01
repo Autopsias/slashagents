@@ -24,7 +24,9 @@
 #     * File title/purpose
 #     * Table of contents
 
-VALIDATION_PATH="/Users/ricardocarvalho/CC_Agents_Commands/VALIDATION.md"
+# Project root (dynamically resolved - works from anywhere)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+VALIDATION_PATH="${PROJECT_ROOT}/VALIDATION.md"
 PASSED=0
 FAILED=0
 TOTAL=0

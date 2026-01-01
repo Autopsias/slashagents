@@ -1,0 +1,16 @@
+{
+  "hooks": [
+    {
+      "matcher": {
+        "event": "pre_push"
+      },
+      "hooks": [
+        {
+          "type": "command",
+          "command": "/code-quality --check",
+          "description": "Run linting and type checks before pushing code"
+        }
+      ]
+    }
+  ]
+}

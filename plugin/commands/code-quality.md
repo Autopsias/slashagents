@@ -27,8 +27,50 @@ Parse flags from "$ARGUMENTS":
 - `--path=apps/api|apps/web`: Limit scope to specific directory
 - `--max-parallel=N`: Maximum parallel agents (default: 6, max: 6)
 - `--no-chain`: Disable automatic chain invocation after fixes
+- `--continue`: Resume from saved batch state (do NOT start fresh analysis)
 
 If no arguments provided, default to `--check` (analysis only).
+
+---
+
+## STEP 1.5: Load Batch State (if --continue)
+
+If `--continue` flag provided:
+
+1. Check for state file:
+   ```bash
+   if [ -f .claude/state/code-quality-batch.json ]; then
+       echo "Resuming from saved state..."
+       cat .claude/state/code-quality-batch.json
+   else
+       echo "ERROR: No saved state found. Run without --continue first."
+       # Cannot continue - exit or fall back to fresh analysis
+   fi
+   ```
+
+2. Parse saved state to get:
+   - `current_batch` - Which batch to process next
+   - `pending_files` - Files not yet refactored
+   - `completed_files` - Files already done
+   - `clusters` - Dependency clusters
+
+3. **PROMPT before spawning** (confirm before EVERY batch):
+   ```
+   AskUserQuestion(
+     questions=[{
+       "question": "Ready to process batch {N}/{M}? ({X} files in this batch)",
+       "header": "Confirm Batch",
+       "options": [
+         {"label": "Yes, process this batch", "description": "Spawn up to 6 agents for current batch"},
+         {"label": "No, stop here", "description": "Exit without processing. State is preserved."}
+       ],
+       "multiSelect": false
+     }]
+   )
+   ```
+
+4. If user confirms: Skip to PHASE 4 with loaded state
+5. If user declines: Exit gracefully, state remains for later
 
 ---
 
@@ -294,6 +336,89 @@ if result.status == "failed":
 Task(safe-refactor, ...) → wait for completion
 ```
 
+#### PHASE 4.5: BATCH GATE (MANDATORY - CRITICAL FOR CONTEXT MANAGEMENT)
+
+**⚠️ HARD STOP: This section MUST be executed after spawning ANY batch of agents.**
+
+After spawning up to 6 agents for the current batch:
+
+**Step 1: Save State** - Write progress to `.claude/state/code-quality-batch.json`:
+```bash
+mkdir -p .claude/state
+cat > .claude/state/code-quality-batch.json << EOF
+{
+  "session_id": "$(date +%s)",
+  "created_at": "$(date -Iseconds)",
+  "current_batch": BATCH_NUMBER,
+  "total_batches": TOTAL_BATCHES,
+  "clusters": [CLUSTER_DATA],
+  "completed_files": [LIST_OF_COMPLETED],
+  "pending_files": [LIST_OF_PENDING],
+  "failed_files": [LIST_OF_FAILED],
+  "skipped_files": [LIST_OF_SKIPPED]
+}
+EOF
+```
+
+**Step 2: Wait for Current Batch** - Use TaskOutput to block until ALL spawned agents complete:
+```
+# MANDATORY: Wait for each agent spawned in this batch
+# The Task tool returns agent IDs that can be used with TaskOutput
+
+for each agent_id in spawned_agents:
+    TaskOutput(task_id=agent_id, block=true, timeout=300000)
+    # Parse result and update state
+```
+
+**Step 3: STOP AND PROMPT USER** - Do NOT proceed to next batch automatically:
+```
+AskUserQuestion(
+  questions=[{
+    "question": "Batch {N}/{M} complete. {X} files refactored, {Y} remaining, {Z} failed. Continue to next batch?",
+    "header": "Batch Gate",
+    "options": [
+      {"label": "Continue next batch", "description": "Process next batch (up to 6 files)"},
+      {"label": "Stop here", "description": "Save state and exit. Run /code_quality --continue to resume later."}
+    ],
+    "multiSelect": false
+  }]
+)
+```
+
+**Step 4: Handle User Decision**
+
+**On "Stop here":**
+- Update state file with final status
+- Report progress summary
+- Output: "Progress saved. Run `/code_quality --continue` to resume."
+- EXIT the command (do NOT continue)
+
+**On "Continue":**
+- Increment current_batch counter
+- Process ONLY the next batch (max 6 agents)
+- Return to Step 1 (BATCH GATE repeats after each batch)
+
+**WHY THIS IS MANDATORY:**
+```
+┌────────────────────────────────────────────────────────┐
+│  PREVENTS CONTEXT WINDOW EXPLOSION                     │
+│  ──────────────────────────────────────────────────── │
+│  • Each batch uses ~10-20% of context window          │
+│  • 3+ simultaneous batches = overflow                 │
+│  • BATCH GATE ensures ONE batch per context window    │
+│  • User controls when to continue                     │
+│  • Recovery possible from any failure                 │
+└────────────────────────────────────────────────────────┘
+```
+
+**ENFORCEMENT RULES:**
+- ❌ NEVER spawn more than 6 agents in a single response
+- ❌ NEVER continue to next batch without user confirmation
+- ❌ NEVER skip state saving between batches
+- ✅ ALWAYS wait for all agents with TaskOutput before prompting
+- ✅ ALWAYS save state before prompting user
+- ✅ ALWAYS respect user's "Stop here" decision
+
 #### PHASE 5: Failure Handling (Interactive)
 
 When a refactoring agent fails, use AskUserQuestion to prompt:
@@ -524,3 +649,82 @@ Log all orchestration decisions to `.claude/logs/orchestration-{date}.jsonl`:
 
 **Safe to parallelize (different clusters, no shared tests)**
 **Must serialize (same cluster, shared test files)**
+
+---
+
+## Batch Progress Display
+
+After each batch completes, show progress:
+
+```
+╔══════════════════════════════════════════════════════════╗
+║                    BATCH PROGRESS                        ║
+╠══════════════════════════════════════════════════════════╣
+║  Batch:       2 of 4                                     ║
+║  Completed:   6 files                                    ║
+║  Pending:     9 files                                    ║
+║  Failed:      1 file                                     ║
+║  Skipped:     0 files                                    ║
+╠══════════════════════════════════════════════════════════╣
+║  Status:      Waiting for user confirmation              ║
+║  Est. remaining batches: 2                               ║
+╚══════════════════════════════════════════════════════════╝
+
+To continue: Select "Continue next batch" when prompted
+To stop: Select "Stop here" - state will be saved
+To resume later: Run `/code_quality --continue`
+```
+
+---
+
+## State File Format
+
+Location: `.claude/state/code-quality-batch.json`
+
+```json
+{
+  "session_id": "1704067200",
+  "created_at": "2024-01-01T00:00:00Z",
+  "project_path": "/path/to/project",
+  "total_violations": 15,
+  "current_batch": 2,
+  "total_batches": 4,
+  "clusters": [
+    {
+      "id": "cluster_a",
+      "files": ["user_service.py", "user_utils.py"],
+      "mode": "serial",
+      "status": "completed",
+      "shared_tests": ["tests/test_user.py"]
+    },
+    {
+      "id": "cluster_b",
+      "files": ["auth_handler.py", "payment.py"],
+      "mode": "parallel",
+      "status": "in_progress",
+      "shared_tests": []
+    }
+  ],
+  "completed_files": [
+    {"file": "user_service.py", "original_loc": 612, "new_loc": 245, "status": "fixed"},
+    {"file": "user_utils.py", "original_loc": 534, "new_loc": 198, "status": "fixed"}
+  ],
+  "pending_files": ["auth_handler.py", "payment.py", "notification.py"],
+  "failed_files": [],
+  "skipped_files": []
+}
+```
+
+---
+
+## Context Window Protection Summary
+
+| Protection | Mechanism |
+|------------|-----------|
+| Max agents per batch | 6 (hard limit) |
+| Batch gate | AskUserQuestion after each batch |
+| State persistence | JSON file between batches |
+| User control | Confirmation before every batch |
+| Recovery | `--continue` flag to resume |
+
+**No bypass available** - Every batch requires explicit user confirmation.

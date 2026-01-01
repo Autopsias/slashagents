@@ -40,6 +40,63 @@ DO NOT spawn agents sequentially - this defeats the purpose.
 - NEVER spawn more than 6 agents in a single batch
 - Complex tasks → break into phases, not more agents
 
+### Rule 2a: ONE BATCH PER TURN (CRITICAL)
+
+**⚠️ CONTEXT WINDOW PROTECTION - MANDATORY ENFORCEMENT**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  YOU MAY SPAWN AT MOST 6 AGENTS IN YOUR ENTIRE RESPONSE │
+│  After spawning 6 agents, you MUST STOP                 │
+│  Do NOT process additional batches in the same turn     │
+│  The user/caller will invoke you again for more batches │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Mental Counter - Track This:**
+```
+AGENTS_SPAWNED = 0
+MAX_PER_TURN = 6
+
+Before EVERY Task() call:
+  if AGENTS_SPAWNED >= MAX_PER_TURN:
+      ⛔ STOP IMMEDIATELY
+      - Save remaining work to state
+      - Report: "Batch complete. {N} more files pending."
+      - DO NOT spawn more agents
+      - EXIT and wait for next invocation
+  else:
+      AGENTS_SPAWNED += 1
+      Task(...)  # Proceed with spawn
+```
+
+**Why This Matters:**
+- Each agent's output consumes context window
+- 6+ simultaneous agents → context explosion
+- User loses control when batches run unattended
+- Failures cascade without recovery points
+
+### Rule 2b: MANDATORY EXIT AFTER BATCH
+
+After spawning up to 6 agents in your response:
+
+1. **DO NOT** continue to the next cluster
+2. **WAIT** for all spawned agents using TaskOutput:
+   ```
+   # Wait for each agent to complete
+   TaskOutput(task_id="agent_1_id", block=true)
+   TaskOutput(task_id="agent_2_id", block=true)
+   # ... for each spawned agent
+   ```
+3. **REPORT** batch results in structured format
+4. **EXIT** - let the caller decide whether to continue
+
+**This prevents:**
+- Context window explosion from multiple batches
+- Uncontrolled agent spawning cascades
+- Loss of user control over execution
+- Inability to recover from mid-batch failures
+
 ### Rule 3: Conflict Detection (MANDATORY)
 
 Before spawning ANY agents, you MUST:
@@ -441,12 +498,30 @@ When refactoring involves test files:
 
 ### Maximum Concurrent Safe-Refactor Agents
 
-**ABSOLUTE LIMIT: 6 agents at any time**
+**ABSOLUTE LIMIT: 6 agents at any time - NO EXCEPTIONS**
 
-Even if you have 10 independent clusters, never spawn more than 6 safe-refactor agents simultaneously. This prevents:
+Even if you have 10 independent clusters, never spawn more than 6 safe-refactor agents simultaneously.
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  BATCH LIMIT ENFORCEMENT                                   │
+│  ────────────────────────────────────────────────────────  │
+│  ✓ Spawn up to 6 agents                                    │
+│  ✓ Wait for all to complete (TaskOutput)                   │
+│  ✓ Report results                                          │
+│  ✓ EXIT - do not spawn more batches                        │
+│  ────────────────────────────────────────────────────────  │
+│  The caller will invoke you again for the next batch       │
+│  This gives user control and prevents context explosion    │
+└────────────────────────────────────────────────────────────┘
+```
+
+This prevents:
+- Context window explosion (CRITICAL)
 - Resource exhaustion
 - Git lock contention
 - System overload
+- Loss of user control
 
 ### Observability
 

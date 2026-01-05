@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**CC_Agents_Commands** is a curated collection of 53 battle-tested Claude Code extensions (16 slash commands, 35 subagents, 2 skills) designed to help developers **stay in flow**.
+**SlashAgents** is a curated collection of 53 battle-tested Claude Code extensions (16 slash commands, 35 subagents, 2 skills) designed to help developers **stay in flow**.
 
 **Core Value:** Claude Code extensions that preserve creative momentum - whether doing generic workflow tasks (PR management, CI orchestration) or structured BMAD development (epic workflows).
 
@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository Structure
 
 ```
-CC_Agents_Commands/
+SlashAgents/
 ├── LICENSE                      # MIT License
 ├── README.md                    # Single comprehensive documentation
 ├── VALIDATION.md                # Pre-release testing checklist
@@ -103,7 +103,7 @@ CC_Agents_Commands/
 |---------|-------|
 | **Runner Name** | `macos-runner-1` |
 | **Install Path** | `~/cc-agents-runner/` |
-| **Service Name** | `actions.runner.Autopsias-claude-agents-commands.macos-runner-1` |
+| **Service Name** | `actions.runner.Autopsias-slashagents.macos-runner-1` |
 
 ```bash
 # Check status

@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Discussions
-    url: https://github.com/Autopsias/claude-agents-commands/discussions
+    url: https://github.com/Autopsias/slashagents/discussions
     about: Ask questions and discuss ideas
   - name: Documentation
-    url: https://github.com/Autopsias/claude-agents-commands#readme
+    url: https://github.com/Autopsias/slashagents#readme
     about: Read the documentation before opening an issue

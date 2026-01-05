@@ -1,10 +1,10 @@
 {
-  "name": "cc-agents-commands",
+  "name": "slashagents",
   "version": "1.3.0",
   "description": "53 battle-tested Claude Code extensions (16 commands, 35 agents, 2 skills)",
   "author": "Ricardo Carvalho",
   "license": "MIT",
-  "repository": "https://github.com/Autopsias/claude-agents-commands",
+  "repository": "https://github.com/Autopsias/slashagents",
   "keywords": ["claude-code", "agents", "commands", "workflow", "automation"],
   "documentation": {
     "setup": "See MCP_SETUP.md for MCP server configuration and API key setup",

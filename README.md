@@ -1,4 +1,4 @@
-# CC_Agents_Commands
+# SlashAgents
 
 **Version:** 1.3.0 | **Updated:** 2025-12-31 | **Author:** Ricardo Carvalho
 
@@ -45,8 +45,8 @@ The easiest way to get started with all features enabled:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/Autopsias/claude-agents-commands.git
-   cd claude-agents-commands
+   git clone https://github.com/Autopsias/slashagents.git
+   cd slashagents
    ```
 
 2. **Install as plugin**
@@ -76,8 +76,8 @@ For users who prefer manual installation with full control:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/Autopsias/claude-agents-commands.git
-   cd claude-agents-commands
+   git clone https://github.com/Autopsias/slashagents.git
+   cd slashagents
    ```
 
 2. **Backup existing commands** (if any exist)

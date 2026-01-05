@@ -1,6 +1,6 @@
-# Contributing to CC_Agents_Commands
+# Contributing to SlashAgents
 
-Thank you for your interest in contributing! This document provides guidelines for contributing to the CC_Agents_Commands collection.
+Thank you for your interest in contributing! This document provides guidelines for contributing to the SlashAgents collection.
 
 ## Code of Conduct
 
@@ -10,7 +10,7 @@ Be respectful, inclusive, and constructive. We welcome contributors of all exper
 
 ### Reporting Bugs
 
-1. Check [existing issues](https://github.com/Autopsias/claude-agents-commands/issues) first
+1. Check [existing issues](https://github.com/Autopsias/slashagents/issues) first
 2. Open a new issue with:
    - Clear, descriptive title
    - Steps to reproduce
@@ -28,8 +28,8 @@ Be respectful, inclusive, and constructive. We welcome contributors of all exper
 #### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/claude-agents-commands.git
-cd claude-agents-commands
+git clone https://github.com/YOUR-USERNAME/slashagents.git
+cd slashagents
 ```
 
 #### 2. Create a Branch
@@ -135,7 +135,7 @@ Before submitting:
 
 ## Questions?
 
-Open a [discussion](https://github.com/Autopsias/claude-agents-commands/discussions) for questions or ideas.
+Open a [discussion](https://github.com/Autopsias/slashagents/discussions) for questions or ideas.
 
 ---
 

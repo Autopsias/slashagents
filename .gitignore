@@ -38,3 +38,8 @@ Desktop.ini
 # Optional: Local Testing Artifacts
 # -------------------------------------------
 .test-output/
+
+# -------------------------------------------
+# Development Test Files (contain local paths)
+# -------------------------------------------
+tests/

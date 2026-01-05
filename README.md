@@ -1,6 +1,6 @@
 # CC_Agents_Commands
 
-**Version:** 1.3.0 | **Updated:** 2025-12-31 | **Author:** Ricardo
+**Version:** 1.3.0 | **Updated:** 2025-12-31 | **Author:** Ricardo Carvalho
 
 A curated collection of 53 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 16 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 35 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
 

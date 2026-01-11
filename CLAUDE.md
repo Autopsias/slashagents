@@ -23,7 +23,8 @@ SlashAgents/
 │   ├── parallel.md, epic-dev.md, epic-dev-full.md, epic-dev-init.md
 │   ├── epic-dev-epic-end-tests.md, coverage.md, code-quality.md
 │   ├── create-test-plan.md, user-testing.md, nextsession.md
-│   └── usertestgates.md, test-epic-full.md
+│   ├── usertestgates.md, test-epic-full.md
+│   └── lib/                     # Shared libraries (dependency-analyzer.md, failure-handler.md)
 ├── agents/                      # 35 subagents (users copy to ~/.claude/agents/)
 │   ├── unit-test-fixer.md, api-test-fixer.md, database-test-fixer.md, e2e-test-fixer.md
 │   ├── linting-fixer.md, type-error-fixer.md, import-error-fixer.md, security-scanner.md
@@ -93,7 +94,7 @@ SlashAgents/
 ## Critical Rules
 
 - **NO hardcoded paths** - tools must work across any project
-- **NO shared utility files** - each tool is self-contained
+- **Shared libs in commands/lib/** - dependency-analyzer.md, failure-handler.md used by orchestrators
 - **NO modifications to tool logic** - only metadata and filename changes
 - **First-Use Test required** - 2-3 people must cold-install before release
 

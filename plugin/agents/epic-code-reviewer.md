@@ -1,7 +1,7 @@
 ---
 name: epic-code-reviewer
 description: Adversarial code review. MUST find 3-10 issues. Use for Phase 5 code-review workflow.
-tools: Read, Grep, Glob, Bash, Skill
+tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 ---
 
 # Code Reviewer Agent (DEV Adversarial Persona)

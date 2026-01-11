@@ -142,7 +142,19 @@ test -f "test-results/vitest/results.json" && echo "VITEST_EXISTS=yes" || echo "
 
 **2e. Check Playwright results:**
 ```bash
-test -f "test-results/playwright/results.json" && echo "PLAYWRIGHT_EXISTS=yes" || echo "PLAYWRIGHT_EXISTS=no"
+# Check multiple possible locations for Playwright results
+if test -f "test-results/playwright/results.json"; then
+    echo "PLAYWRIGHT_EXISTS=yes"
+    echo "PLAYWRIGHT_LOCATION=test-results/playwright/results.json"
+elif test -f "apps/web/test-results/playwright/results.json"; then
+    echo "PLAYWRIGHT_EXISTS=yes"
+    echo "PLAYWRIGHT_LOCATION=apps/web/test-results/playwright/results.json"
+elif test -f "apps/web/.playwright/results.json"; then
+    echo "PLAYWRIGHT_EXISTS=yes"
+    echo "PLAYWRIGHT_LOCATION=apps/web/.playwright/results.json"
+else
+    echo "PLAYWRIGHT_EXISTS=no"
+fi
 ```
 
 ---
@@ -267,7 +279,12 @@ test -f "apps/web/vitest.config.ts" && mkdir -p test-results/vitest && cd apps/w
 
 **4c. Run Playwright (if config exists):**
 ```bash
-test -f "playwright.config.ts" && mkdir -p test-results/playwright && npx playwright test --reporter=json 2>&1 | tee test-results/playwright/results.json | tail -25
+# Check for Playwright config in project root or apps/web/
+if test -f "playwright.config.ts"; then
+    mkdir -p test-results/playwright && npx playwright test --reporter=json 2>&1 | tee test-results/playwright/results.json | tail -25
+elif test -f "apps/web/playwright.config.ts"; then
+    mkdir -p apps/web/test-results/playwright && cd apps/web && npx playwright test --reporter=json 2>&1 | tee test-results/playwright/results.json | tail -25
+fi
 ```
 
 **4d. If --coverage flag present:**
@@ -289,8 +306,9 @@ Use the Read tool:
 - Look for `"status": "failed"` entries
 - Extract: test name, file path, failure messages
 
-**For Playwright:** `Read(file_path="test-results/playwright/results.json")`
-- Look for specs where `"ok": false`
+**For Playwright:** `Read(file_path="${PLAYWRIGHT_LOCATION}")`
+(Use the PLAYWRIGHT_LOCATION variable from STEP 2e)
+- Look for specs where `"ok": false` or `"status": "unexpected"`
 - Extract: test title, browser, error message
 
 ---

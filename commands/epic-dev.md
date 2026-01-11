@@ -251,12 +251,29 @@ Return JSON: {fixes_applied, tests_passing, status}"
 END WHILE
 ```
 
-### Complete
+### Complete - MANDATORY STATUS UPDATES
 
-```
-Update sprint-status.yaml: story status → "done"
-Output: "Story {story_key} COMPLETE!"
-```
+**CRITICAL: The orchestrator MUST update status after successful code review.**
+
+After code review passes (Gate 3.5 green):
+
+1. **Update sprint-status.yaml** using Edit tool:
+   - Read the full sprint-status.yaml file
+   - Find the line containing `{story_key}:` in development_status section
+   - Change the status value to `done`
+   - Save the file preserving all comments and structure
+
+2. **Update story file Status** using Edit tool:
+   - Read the story file at `{sprint_artifacts}/stories/{story_key}.md`
+   - Find the `Status:` field (usually near the top)
+   - Change to `Status: done`
+   - Save the file
+
+3. **Verify updates**:
+   - Re-read sprint-status.yaml and confirm `{story_key}: done`
+   - If verification fails, retry the edit
+
+Output: "✅ Story {story_key} COMPLETE! Status updated to 'done' in both sprint-status.yaml and story file."
 
 ### Confirm Next (unless --yolo)
 
@@ -276,7 +293,27 @@ IF NOT --yolo AND more_stories_remaining:
 
 ---
 
-## STEP 5: Epic Complete
+## STEP 5: Epic Complete - MANDATORY EPIC STATUS UPDATE
+
+When all stories in the epic are done (no more pending stories):
+
+**CRITICAL: The orchestrator MUST mark the epic as done.**
+
+1. **Update sprint-status.yaml** using Edit tool:
+   - Read the full sprint-status.yaml file
+   - Find the line containing `epic-{epic_num}:` in development_status section
+   - Change the status value to `done`
+   - Save the file preserving all comments and structure
+
+2. **Update epic retrospective status**:
+   - Find the line containing `epic-{epic_num}-retrospective:`
+   - If status is `optional` or `backlog`, change to `pending`
+   - This signals that retrospective should be run
+
+3. **Verify epic completion**:
+   - Re-read sprint-status.yaml
+   - Confirm `epic-{epic_num}: done`
+   - Confirm all `{epic_num}-*` stories show `done`
 
 ```
 Output:
@@ -284,6 +321,8 @@ Output:
 EPIC {epic_num} COMPLETE!
 ================================================
 Stories completed: {count}
+Epic status: done
+Retrospective status: pending
 
 Next steps:
 - Retrospective: /bmad:bmm:workflows:retrospective

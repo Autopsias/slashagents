@@ -1169,23 +1169,46 @@ PROCEED TO PHASE 5
 
 ---
 
-## STEP 6: Story Completion
+## STEP 6: Story Completion - MANDATORY STATUS UPDATES
 
-```
-# Mark story complete
-Update sprint-status.yaml:
-  - story status: "done"
+**CRITICAL: The orchestrator MUST update status after successful quality gate.**
 
-# Clear session state
+After quality gate passes (PASS or WAIVED):
+
+### 6.1 Update sprint-status.yaml
+
+Using Edit tool:
+1. Read the full sprint-status.yaml file
+2. Find the line containing `{story_key}:` in development_status section
+3. Change the status value to `done`
+4. Save the file preserving all comments and structure
+
+### 6.2 Update story file Status
+
+Using Edit tool:
+1. Read the story file at `{sprint_artifacts}/stories/{story_key}.md`
+2. Find the `Status:` field (usually near the top)
+3. Change to `Status: done`
+4. Save the file
+
+### 6.3 Verify updates
+
+1. Re-read sprint-status.yaml and confirm `{story_key}: done`
+2. If verification fails, retry the edit
+
+### 6.4 Clear session state
+
 Clear epic_dev_session (or update for next story)
 
+```
 Output:
 ═══════════════════════════════════════════════════════════════════════════
-STORY COMPLETE: {story_key}
+✅ STORY COMPLETE: {story_key}
 ═══════════════════════════════════════════════════════════════════════════
 Phases completed: 8/8
 Quality Gate: {gate_decision}
 Coverage: P0={p0_coverage}%, P1={p1_coverage}%, Overall={overall_coverage}%
+Status updated: sprint-status.yaml and story file → done
 ═══════════════════════════════════════════════════════════════════════════
 
 IF NOT --yolo AND more_stories_remaining:
@@ -1204,16 +1227,43 @@ IF NOT --yolo AND more_stories_remaining:
 
 ---
 
-## STEP 7: Epic Completion
+## STEP 7: Epic Completion - MANDATORY EPIC STATUS UPDATE
+
+When all stories in the epic are done (no more pending stories):
+
+**CRITICAL: The orchestrator MUST mark the epic as done.**
+
+### 7.1 Update epic status in sprint-status.yaml
+
+Using Edit tool:
+1. Read the full sprint-status.yaml file
+2. Find the line containing `epic-{epic_num}:` in development_status section
+3. Change the status value to `done`
+4. Save the file preserving all comments and structure
+
+### 7.2 Update epic retrospective status
+
+Using Edit tool:
+1. Find the line containing `epic-{epic_num}-retrospective:`
+2. If status is `optional` or `backlog`, change to `pending`
+3. This signals that retrospective should be run
+
+### 7.3 Verify epic completion
+
+1. Re-read sprint-status.yaml
+2. Confirm `epic-{epic_num}: done`
+3. Confirm all `{epic_num}-*` stories show `done`
 
 ```
 Output:
 ════════════════════════════════════════════════════════════════════════════════
-EPIC {epic_num} COMPLETE!
+✅ EPIC {epic_num} COMPLETE!
 ════════════════════════════════════════════════════════════════════════════════
 Stories completed: {count}
 Total phases executed: {count * 8}
 All quality gates: {summary}
+Epic status: done
+Retrospective status: pending
 
 Next steps:
 - Retrospective: /bmad:bmm:workflows:retrospective

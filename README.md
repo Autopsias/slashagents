@@ -1,6 +1,6 @@
 # SlashAgents
 
-**Version:** 1.3.0 | **Updated:** 2025-12-31 | **Author:** Ricardo Carvalho
+**Version:** 1.4.0 | **Updated:** 2025-01-11 | **Author:** Ricardo Carvalho
 
 A curated collection of 53 battle-tested Claude Code extensions designed to help developers **stay in flow**. This toolkit includes 16 slash commands (workflow automation like `/pr` and `/ci-orchestrate`), 35 agents (specialized agents for testing, code quality, BMAD workflows, and automation), and 2 skills (reusable PR and refactoring operations).
 
@@ -152,6 +152,44 @@ Analyzes CI failures, spawns parallel agents, and fixes issues automatically. _N
 /ci-orchestrate
 ```
 
+## Ralph Loop (Unattended Execution)
+
+Several commands support **Ralph Loop mode** for unattended/overnight execution. This pattern spawns fresh Claude instances per iteration, preventing context exhaustion on long-running tasks.
+
+### Usage
+
+Add `--loop N` to any supported command:
+
+```bash
+# Run epic development overnight (max 10 iterations)
+/epic-dev 2 --loop 10
+
+# Run code quality fixes with 30s delay between iterations
+/code-quality --fix --loop 5 --loop-delay 30
+
+# CI fixes in loop mode
+/ci-orchestrate --loop 10
+```
+
+### Supported Commands
+
+| Command | Completion Signal |
+|---------|-------------------|
+| `/epic-dev` | Epic complete |
+| `/epic-dev-full` | Epic complete |
+| `/code-quality` | All violations fixed |
+| `/test-orchestrate` | All tests passing |
+| `/ci-orchestrate` | All CI checks passing |
+
+### How It Works
+
+1. Spawns a **fresh Claude instance** per iteration (full 200K context)
+2. Detects **completion signals** to exit early on success
+3. Detects **blocking signals** to halt for human intervention
+4. Configurable max iterations (`--loop N`) and delay (`--loop-delay S`)
+
+> **Attribution:** Pattern inspired by [snarktank/ralph](https://github.com/snarktank/ralph)
+
 ## CI/CD
 
 This project uses self-hosted macOS runners for continuous integration. See [docs/SELF_HOSTED_RUNNERS.md](docs/SELF_HOSTED_RUNNERS.md) for runner setup and maintenance instructions.
@@ -170,6 +208,15 @@ This project uses self-hosted macOS runners for continuous integration. See [doc
 
 Commands are organized by workflow moment to help you quickly find the right tool for your task.
 
+### Shared Libraries
+
+Commands in `commands/lib/` provide reusable patterns used internally by orchestrators:
+
+| Library | Purpose |
+|---------|---------|
+| `ralph-loop.md` | Fresh-context loop pattern for unattended execution |
+| `status-updater.md` | Reliable status file update patterns for orchestrators |
+
 ### Starting Work
 
 | Command | What it does | Prerequisites |
@@ -181,8 +228,8 @@ Commands are organized by workflow moment to help you quickly find the right too
 
 | Command | What it does | Prerequisites |
 | --------- | -------------- | --------------- |
-| `/epic-dev` | Automates BMAD development cycle for epic stories | BMAD framework |
-| `/epic-dev-full` | Executes full TDD/ATDD-driven BMAD development | BMAD framework |
+| `/epic-dev` | Automates BMAD development cycle for epic stories (supports `--loop`) | BMAD framework |
+| `/epic-dev-full` | Executes full TDD/ATDD-driven BMAD development (supports `--loop`) | BMAD framework |
 | `/epic-dev-epic-end-tests` | Validates epic completion with NFR assessment | BMAD framework |
 | `/parallel` | Smart parallelization with file conflict detection and specialist routing | — |
 
@@ -190,9 +237,9 @@ Commands are organized by workflow moment to help you quickly find the right too
 
 | Command | What it does | Prerequisites |
 | --------- | -------------- | --------------- |
-| `/ci-orchestrate` | Orchestrates CI failure analysis and fixes | `github` MCP |
-| `/test-orchestrate` | Orchestrates test failure analysis and fixes | test files and results |
-| `/code-quality` | Analyzes and fixes code quality issues | code files in project |
+| `/ci-orchestrate` | Orchestrates CI failure analysis and fixes (supports `--loop`) | `github` MCP |
+| `/test-orchestrate` | Orchestrates test failure analysis and fixes (supports `--loop`) | test files and results |
+| `/code-quality` | Analyzes and fixes code quality issues (supports `--loop`) | code files in project |
 | `/coverage` | Orchestrates test coverage improvement | test coverage tools |
 | `/create-test-plan` | Creates comprehensive test plans | project documentation |
 | `/test-epic-full` | Tests epic-dev-full command workflow | BMAD framework |

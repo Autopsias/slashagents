@@ -1,6 +1,6 @@
 ---
 description: "Orchestrate CI/CD pipeline fixes through parallel specialist agent deployment"
-argument-hint: "[issue] [--fix-all] [--strategic] [--research] [--docs] [--force-escalate] [--check-actions] [--quality-gates] [--performance] [--only-stage=<stage>]"
+argument-hint: "[issue] [--fix-all] [--strategic] [--research] [--docs] [--force-escalate] [--check-actions] [--quality-gates] [--performance] [--only-stage=<stage>] [--loop N] [--loop-delay S]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand", "WebSearch", "WebFetch"]
 ---
 
@@ -192,6 +192,118 @@ if [[ "$TARGET_STAGE" != "all" ]]; then
     echo "💡 Tip: Once fixed, run without --only-stage to verify full pipeline"
     exit 0
 fi
+```
+
+**STEP 0.1.6: Ralph Loop Mode Detection (Fresh Context)**
+
+If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.
+
+This enables unattended/overnight CI fixing by spawning NEW Claude instances per iteration.
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  # Determine inner command flags (preserve all except --loop)
+  inner_flags = "$ARGUMENTS" without "--loop" and "--loop-delay"
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (CI Orchestration)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended CI fixing"
+  Output: "  Inner flags: {inner_flags}"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  inner_command = "/ci_orchestrate {inner_flags}"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    ```bash
+    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
+    EXIT_CODE=$?
+    ```
+
+    # Check for completion signals (all CI checks passing)
+    IF OUTPUT matches regex "All CI checks passing|CI_STATUS.*passing|CI pipeline.*PASS|quality gates.*passing":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  All CI issues fixed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|Maximum command chain depth":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /ci_orchestrate --loop {remaining_iterations} {inner_flags}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for auto-escalation to strategic mode
+    IF OUTPUT matches regex "AUTO-ESCALATING to strategic mode":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "🔬 RALPH LOOP: Detected Strategic Escalation"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Recurring CI failures detected"
+      Output: "  Adding --strategic flag for next iteration..."
+      Output: "════════════════════════════════════════════════════════"
+      inner_command = "/ci_orchestrate --strategic {inner_flags}"
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without all CI passing"
+  Output: "  Some CI failures may remain"
+  Output: "  Action: Check CI status with gh run list"
+  Output: "  Resume: /ci_orchestrate --loop {loop_max} --strategic"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 0.2
+  PROCEED TO STEP 0.2
+END IF
 ```
 
 **STEP 0.2: Check for Auto-Escalation**

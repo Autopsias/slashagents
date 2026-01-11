@@ -1,6 +1,6 @@
 ---
 description: "Analyze and fix code quality issues - file sizes, function lengths, complexity"
-argument-hint: "[--check] [--fix] [--dry-run] [--refresh-exceptions] [--focus=file-size|function-length|complexity] [--path=...] [--max-parallel=N] [--no-chain] [--continue]"
+argument-hint: "[--check] [--fix] [--dry-run] [--refresh-exceptions] [--focus=file-size|function-length|complexity] [--path=...] [--max-parallel=N] [--no-chain] [--continue] [--loop N] [--loop-delay S]"
 allowed-tools: ["Task", "Bash", "Grep", "Read", "Glob", "TodoWrite", "SlashCommand", "AskUserQuestion"]
 ---
 
@@ -34,6 +34,9 @@ Parse flags from "$ARGUMENTS":
   Use when you want guaranteed reliability at the cost of speed
 - `--no-ralph`: Disable auto-Ralph fallback on hallucination detection
   ⚠️ WARNING: Without Ralph fallback, hallucinated files will be marked as failed (no retry)
+- `--loop N`: Enable fresh-context loop mode (spawns new Claude instances for unattended execution)
+  Max N iterations with completely fresh 200K context per iteration
+- `--loop-delay S`: Seconds to wait between loop iterations (default: 5)
 
 If no arguments provided, default to `--check` (analysis only).
 
@@ -66,6 +69,124 @@ echo "Done. Exception files updated."
 ```
 
 Exit after refresh (no other steps executed).
+
+---
+
+## STEP 1.25: Ralph Loop Mode Detection (Fresh Context)
+
+**If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.**
+
+This is different from `--ralph` (which is within-context self-correction). The `--loop` flag spawns
+completely NEW Claude instances per iteration for unattended/overnight execution.
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  # Determine inner command flags (preserve all except --loop)
+  inner_flags = "$ARGUMENTS" without "--loop" and "--loop-delay"
+  IF NOT contains "--fix":
+    inner_flags += " --fix"  # Loop mode implies --fix
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (Code Quality)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended (--fix implied)"
+  Output: "  Inner flags: {inner_flags}"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  inner_command = "/code_quality {inner_flags}"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    ```bash
+    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
+    EXIT_CODE=$?
+    ```
+
+    # Check for completion signals
+    IF OUTPUT matches regex "All.*violations.*fixed|0 violations remaining|Code Quality.*PASS|Status.*PASS":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  All code quality violations fixed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|user chose.*abort":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /code_quality --loop {remaining_iterations} {inner_flags}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for "Stop here" signal (user stopped but progress saved)
+    IF OUTPUT matches regex "Stop here|state.*saved|--continue to resume":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⏸️ RALPH LOOP PAUSED (State Saved)"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Progress saved at iteration {iteration}"
+      Output: "  Continuing in next iteration with --continue flag..."
+      Output: "════════════════════════════════════════════════════════"
+      # Update inner_command to include --continue for subsequent iterations
+      inner_command = "/code_quality --continue {inner_flags}"
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without completion"
+  Output: "  Violations may remain"
+  Output: "  Action: Check remaining violations with /code_quality --check"
+  Output: "  Resume: /code_quality --loop {loop_max}"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 1.5
+  PROCEED TO STEP 1.5
+END IF
+```
 
 ---
 

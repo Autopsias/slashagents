@@ -1,6 +1,6 @@
 ---
 description: "Orchestrate test failure analysis and coordinate parallel specialist test fixers with strategic analysis mode"
-argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--strategic] [--research] [--force-escalate] [--no-chain] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only] [--only-category=<unit|integration|e2e|acceptance>]"
+argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--strategic] [--research] [--force-escalate] [--no-chain] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only] [--only-category=<unit|integration|e2e|acceptance>] [--loop N] [--loop-delay S]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---
 
@@ -81,6 +81,120 @@ If TEST_FIX_COUNT >= 3:
 | Otherwise | TACTICAL (default) |
 
 Report the mode: "Operating in [TACTICAL/STRATEGIC] mode."
+
+---
+
+## STEP 0.5: Ralph Loop Mode Detection (Fresh Context)
+
+**If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.**
+
+This enables unattended/overnight test fixing by spawning NEW Claude instances per iteration.
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  # Determine inner command flags (preserve all except --loop)
+  inner_flags = "$ARGUMENTS" without "--loop" and "--loop-delay"
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (Test Orchestration)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended test fixing"
+  Output: "  Inner flags: {inner_flags}"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  inner_command = "/test_orchestrate {inner_flags}"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    ```bash
+    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
+    EXIT_CODE=$?
+    ```
+
+    # Check for completion signals (all tests passing)
+    IF OUTPUT matches regex "All tests passing|PYTEST_FAILURES=0.*VITEST_FAILURES=0|status.*all_passing|0 failures":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  All tests fixed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|Maximum orchestration depth":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /test_orchestrate --loop {remaining_iterations} {inner_flags}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for strategic mode suggestion (recurring failures)
+    IF OUTPUT matches regex "Run with --strategic for root cause analysis":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "🔬 RALPH LOOP: Escalating to Strategic Mode"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Tests still failing after iteration {iteration}"
+      Output: "  Adding --strategic flag for next iteration..."
+      Output: "════════════════════════════════════════════════════════"
+      inner_command = "/test_orchestrate --strategic {inner_flags}"
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without all tests passing"
+  Output: "  Some test failures may remain"
+  Output: "  Action: Check test results with /test_orchestrate"
+  Output: "  Resume: /test_orchestrate --loop {loop_max} --strategic"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 1
+  PROCEED TO STEP 1
+END IF
+```
 
 ---
 

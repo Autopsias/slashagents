@@ -1,6 +1,6 @@
 ---
 description: "Full TDD/ATDD-driven BMAD development cycle with comprehensive test phases and quality gates"
-argument-hint: "<epic-number> [--yolo] [--resume]"
+argument-hint: "<epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S]"
 allowed-tools: ["Task", "SlashCommand", "Read", "Write", "Edit", "Bash", "Grep", "Glob", "TodoWrite", "AskUserQuestion"]
 ---
 
@@ -12,16 +12,19 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 
 **YOU ARE A PURE ORCHESTRATOR - DELEGATION ONLY**
 - ❌ NEVER execute workflows directly - you are a pure orchestrator
-- ❌ NEVER use Edit, Write, MultiEdit tools yourself
 - ❌ NEVER implement story tasks or fix code yourself
 - ❌ NEVER run SlashCommand directly - delegate to subagents
-- ✅ MUST delegate ALL work to subagents via Task tool
-- ✅ Your role is ONLY to: read state, delegate tasks, verify completion, update session
+- ✅ MUST delegate ALL implementation work to subagents via Task tool
+- ✅ Your role is ONLY to: read state, delegate tasks, verify completion
+- ✅ **EXCEPTION: You MUST use Edit tool DIRECTLY for status file updates**
+     (sprint-status.yaml story/epic status AND story file Status field)
+     This is NOT delegated because subagents don't have orchestration context.
 
 **GUARD RAIL CHECK**: Before ANY action ask yourself:
 - "Am I about to do work directly?" → If YES: STOP and delegate via Task instead
 - "Am I using Read/Bash to check state?" → OK to proceed
 - "Am I using Task tool to spawn a subagent?" → Correct approach
+- "Am I using Edit for sprint-status.yaml or story Status field?" → OK (exception for status updates)
 
 **SUBAGENT EXECUTION PATTERN**: Each Task call spawns an independent subagent that:
 - Has its own context window (preserves main agent context)
@@ -66,7 +69,107 @@ Parse "$ARGUMENTS" to extract:
 
 **Validation:**
 - epic_number must be a positive integer
-- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume]"
+- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S]"
+
+---
+
+## STEP 1.5: Ralph Loop Mode Detection
+
+**If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.**
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (Full TDD/ATDD Workflow)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Epic: {epic_num}"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended (--yolo implied)"
+  Output: "  Workflow: Full 8-phase TDD/ATDD cycle"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  inner_command = "/epic-dev-full {epic_num} --yolo"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    ```bash
+    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
+    EXIT_CODE=$?
+    ```
+
+    # Check for epic completion signals
+    IF OUTPUT matches regex "✅ EPIC.*COMPLETE|All stories in Epic.*complete|Epic.*finished":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Epic {epic_num} completed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "  Workflow: Full 8-phase TDD/ATDD cycle"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|STATUS UPDATE FAILED":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /epic-dev-full {epic_num} --loop {remaining_iterations}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without completion"
+  Output: "  Epic {epic_num} may have remaining stories"
+  Output: "  Action: Check sprint-status.yaml for progress"
+  Output: "  Resume: /epic-dev-full {epic_num} --loop {loop_max}"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 2
+  PROCEED TO STEP 2
+END IF
+```
 
 ---
 
@@ -1171,32 +1274,93 @@ PROCEED TO PHASE 5
 
 ## STEP 6: Story Completion - MANDATORY STATUS UPDATES
 
-**CRITICAL: The orchestrator MUST update status after successful quality gate.**
+**CRITICAL: Execute these steps DIRECTLY using Edit tool (this is the exception to "no Edit" rule).**
 
 After quality gate passes (PASS or WAIVED):
 
 ### 6.1 Update sprint-status.yaml
 
-Using Edit tool:
-1. Read the full sprint-status.yaml file
-2. Find the line containing `{story_key}:` in development_status section
-3. Change the status value to `done`
-4. Save the file preserving all comments and structure
+```
+max_retries = 3
+retry_count = 0
+
+WHILE retry_count < max_retries:
+
+  # 1. Read current file to get ACTUAL content
+  content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+  # 2. Find current status - look for "  {story_key}: <status>"
+  SEARCH for line matching "  {story_key}: " and extract current_status
+
+  IF current_status == "done":
+    Output: "✅ sprint-status.yaml already shows 'done'"
+    BREAK
+
+  # 3. Edit with EXACT strings (preserve 2-space indent)
+  Edit(
+    file_path="{sprint_artifacts}/sprint-status.yaml",
+    old_string="  {story_key}: {current_status}",
+    new_string="  {story_key}: done"
+  )
+
+  # 4. Verify by re-reading
+  updated = Read("{sprint_artifacts}/sprint-status.yaml")
+  IF updated contains "  {story_key}: done":
+    Output: "✅ sprint-status.yaml updated successfully"
+    BREAK
+  ELSE:
+    retry_count += 1
+    Output: "⚠️ Verification failed, retry {retry_count}/{max_retries}"
+
+END WHILE
+
+IF retry_count >= max_retries:
+  Output: "❌ FAILED to update sprint-status.yaml after 3 retries"
+  HALT with "Manual intervention required for status update"
+```
 
 ### 6.2 Update story file Status
 
-Using Edit tool:
-1. Read the story file at `{sprint_artifacts}/stories/{story_key}.md`
-2. Find the `Status:` field (usually near the top)
-3. Change to `Status: done`
-4. Save the file
+```
+max_retries = 3
+retry_count = 0
 
-### 6.3 Verify updates
+WHILE retry_count < max_retries:
 
-1. Re-read sprint-status.yaml and confirm `{story_key}: done`
-2. If verification fails, retry the edit
+  # 1. Read story file
+  content = Read("{sprint_artifacts}/stories/{story_key}.md")
 
-### 6.4 Clear session state
+  # 2. Find current Status line (e.g., "Status: in_progress")
+  SEARCH for line starting with "Status: " and extract current_status
+
+  IF current_status == "done":
+    Output: "✅ Story file already shows 'done'"
+    BREAK
+
+  # 3. Edit with EXACT strings
+  Edit(
+    file_path="{sprint_artifacts}/stories/{story_key}.md",
+    old_string="Status: {current_status}",
+    new_string="Status: done"
+  )
+
+  # 4. Verify by re-reading
+  updated = Read("{sprint_artifacts}/stories/{story_key}.md")
+  IF updated contains "Status: done":
+    Output: "✅ Story file status updated successfully"
+    BREAK
+  ELSE:
+    retry_count += 1
+    Output: "⚠️ Verification failed, retry {retry_count}/{max_retries}"
+
+END WHILE
+
+IF retry_count >= max_retries:
+  Output: "❌ FAILED to update story file status after 3 retries"
+  HALT with "Manual intervention required for status update"
+```
+
+### 6.3 Clear session state
 
 Clear epic_dev_session (or update for next story)
 
@@ -1231,28 +1395,77 @@ IF NOT --yolo AND more_stories_remaining:
 
 When all stories in the epic are done (no more pending stories):
 
-**CRITICAL: The orchestrator MUST mark the epic as done.**
+**CRITICAL: Execute these steps DIRECTLY using Edit tool.**
 
 ### 7.1 Update epic status in sprint-status.yaml
 
-Using Edit tool:
-1. Read the full sprint-status.yaml file
-2. Find the line containing `epic-{epic_num}:` in development_status section
-3. Change the status value to `done`
-4. Save the file preserving all comments and structure
+```
+max_retries = 3
+retry_count = 0
 
-### 7.2 Update epic retrospective status
+WHILE retry_count < max_retries:
 
-Using Edit tool:
-1. Find the line containing `epic-{epic_num}-retrospective:`
-2. If status is `optional` or `backlog`, change to `pending`
-3. This signals that retrospective should be run
+  # 1. Read current file
+  content = Read("{sprint_artifacts}/sprint-status.yaml")
 
-### 7.3 Verify epic completion
+  # 2. Find current epic status - look for "  epic-{epic_num}: <status>"
+  SEARCH for line matching "  epic-{epic_num}: " and extract current_status
 
-1. Re-read sprint-status.yaml
-2. Confirm `epic-{epic_num}: done`
-3. Confirm all `{epic_num}-*` stories show `done`
+  IF current_status == "done":
+    Output: "✅ Epic status already shows 'done'"
+    BREAK
+
+  # 3. Edit with EXACT strings
+  Edit(
+    file_path="{sprint_artifacts}/sprint-status.yaml",
+    old_string="  epic-{epic_num}: {current_status}",
+    new_string="  epic-{epic_num}: done"
+  )
+
+  # 4. Verify
+  updated = Read("{sprint_artifacts}/sprint-status.yaml")
+  IF updated contains "  epic-{epic_num}: done":
+    Output: "✅ Epic status updated successfully"
+    BREAK
+  ELSE:
+    retry_count += 1
+    Output: "⚠️ Verification failed, retry {retry_count}/{max_retries}"
+
+END WHILE
+```
+
+### 7.2 Update epic retrospective status (if exists)
+
+```
+# Look for retrospective entry
+content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+IF content contains "epic-{epic_num}-retrospective:":
+  SEARCH for "  epic-{epic_num}-retrospective: " and extract current_status
+
+  IF current_status in ["optional", "backlog"]:
+    Edit(
+      file_path="{sprint_artifacts}/sprint-status.yaml",
+      old_string="  epic-{epic_num}-retrospective: {current_status}",
+      new_string="  epic-{epic_num}-retrospective: pending"
+    )
+    Output: "✅ Retrospective status set to 'pending'"
+```
+
+### 7.3 Verify all story statuses
+
+```
+content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+# Count stories for this epic that are NOT done
+SEARCH for all lines matching "  {epic_num}-*: "
+FOR each match:
+  IF status != "done":
+    Output: "⚠️ Story {key} is still '{status}' - epic cannot be complete"
+    HALT
+
+Output: "✅ All {count} stories verified as 'done'"
+```
 
 ```
 Output:

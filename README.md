@@ -181,6 +181,21 @@ Add `--loop N` to any supported command:
 | `/test-orchestrate` | All tests passing | **Type-level** (unit → integration → e2e) |
 | `/ci-orchestrate` | All CI checks passing | **Category-level** (linting → types → tests) |
 
+### The `--loop N` Parameter
+
+`N` is the **maximum iterations**, not the exact count:
+- Loop exits **early** on completion signals (e.g., "All tests passing", "Epic complete")
+- Loop exits on **blocking signals** requiring human intervention (e.g., "HALT", "Manual intervention required")
+- If neither signal detected after N iterations, loop ends with partial completion
+
+Think of N as a **safety limit** for unattended/overnight runs.
+
+| Signal Type | Example | Behavior |
+|-------------|---------|----------|
+| **Completion** | `All tests passing`, `Epic complete` | ✅ Exit with success |
+| **Blocking** | `HALT`, `Manual intervention required` | ⚠️ Exit, needs human |
+| **Max reached** | Iteration N completes | ⚠️ Exit, may have remaining work |
+
 ### How It Works
 
 1. Spawns a **fresh Claude instance** per iteration (full 200K context)

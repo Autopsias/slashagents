@@ -1,6 +1,6 @@
 ---
 description: "Orchestrate CI/CD pipeline fixes through parallel specialist agent deployment"
-argument-hint: "[issue] [--fix-all] [--strategic] [--research] [--docs] [--force-escalate] [--check-actions] [--quality-gates] [--performance] [--only-stage=<stage>] [--loop N] [--loop-delay S]"
+argument-hint: "[issue] [--fix-all] [--strategic] [--research] [--docs] [--force-escalate] [--check-actions] [--quality-gates] [--performance] [--only-stage=<stage>] [--loop N] [--loop-delay S] [--fix-single-category]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand", "WebSearch", "WebFetch"]
 ---
 
@@ -222,7 +222,8 @@ IF "$ARGUMENTS" contains "--loop":
   Output: ""
 
   # Build inner command (without --loop to avoid infinite recursion)
-  inner_command = "/ci_orchestrate {inner_flags}"
+  # --fix-single-category flag enables category-level granularity (one category per iteration)
+  inner_command = "/ci_orchestrate {inner_flags} --fix-single-category"
 
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
@@ -450,6 +451,208 @@ DO NOT include file contents.")
 IF RESEARCH_ONLY is true: Stop after Phase 1 (research only, no fixes)
 IF DOCS_ONLY is true: Skip to documentation generation only
 OTHERWISE: Continue to TACTICAL STEPS below
+
+---
+
+## STEP 0.4: Category-Level Mode Detection (Phase Granularity)
+
+**If `--fix-single-category` is present, execute only ONE category of CI failures per iteration.**
+
+This provides phase-level granularity for Ralph loops, resulting in:
+- 30-50K tokens per iteration (vs 80-120K for all categories)
+- Fresh context per category (prevents tunnel vision)
+- Better recovery from failures
+
+```
+IF "--fix-single-category" in "$ARGUMENTS":
+  # CATEGORY-LEVEL MODE: Execute ONLY the next category of failures
+
+  Output: "📋 Category-level mode active - fixing ONE failure category..."
+
+  # Analyze CI failures and group by category
+  ```bash
+  # Get CI failure output
+  CI_LOG=$(gh run view --log 2>&1 || echo "")
+
+  # Detect failure categories (in priority order)
+  HAS_LINTING=$(echo "$CI_LOG" | grep -cE "(ruff|mypy|lint|format|E[0-9]+|F[0-9]+)" || echo "0")
+  HAS_TYPES=$(echo "$CI_LOG" | grep -cE "(type.*error|mypy.*error|TypeScript.*error)" || echo "0")
+  HAS_TESTS=$(echo "$CI_LOG" | grep -cE "(FAILED.*test_|pytest.*failed|jest.*failed|vitest.*failed)" || echo "0")
+  HAS_SECURITY=$(echo "$CI_LOG" | grep -cE "(security|vulnerability|bandit|safety)" || echo "0")
+  HAS_IMPORT=$(echo "$CI_LOG" | grep -cE "(ImportError|ModuleNotFoundError|cannot find module)" || echo "0")
+  ```
+
+  # Execute ONLY the first detected category (priority order)
+  IF HAS_LINTING > 0:
+    Output: "=== [CATEGORY: LINTING] Fixing linting/formatting failures ==="
+
+    Task(
+      subagent_type="linting-fixer",
+      model="haiku",
+      description="Fix CI linting failures",
+      prompt="Fix linting and formatting failures detected in CI.
+
+CI log excerpt (linting errors):
+{CI_LOG | grep -E '(ruff|mypy|lint|format|E[0-9]+|F[0-9]+)' | head -50}
+
+Fix all linting issues. Run verification after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ CATEGORY_COMPLETE: LINTING"
+    Output: "   Next category: types (if any)"
+    Exit 0
+
+  ELIF HAS_IMPORT > 0:
+    Output: "=== [CATEGORY: IMPORTS] Fixing import/module failures ==="
+
+    Task(
+      subagent_type="import-error-fixer",
+      model="haiku",
+      description="Fix CI import failures",
+      prompt="Fix import and module resolution failures detected in CI.
+
+CI log excerpt (import errors):
+{CI_LOG | grep -E '(ImportError|ModuleNotFoundError|cannot find module)' | head -50}
+
+Fix all import issues. Run verification after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ CATEGORY_COMPLETE: IMPORTS"
+    Output: "   Next category: types (if any)"
+    Exit 0
+
+  ELIF HAS_TYPES > 0:
+    Output: "=== [CATEGORY: TYPES] Fixing type checking failures ==="
+
+    Task(
+      subagent_type="type-error-fixer",
+      model="sonnet",
+      description="Fix CI type failures",
+      prompt="Fix type checking failures detected in CI.
+
+CI log excerpt (type errors):
+{CI_LOG | grep -E '(type.*error|mypy.*error|TypeScript.*error)' | head -50}
+
+Fix all type errors. Run verification after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ CATEGORY_COMPLETE: TYPES"
+    Output: "   Next category: tests (if any)"
+    Exit 0
+
+  ELIF HAS_TESTS > 0:
+    Output: "=== [CATEGORY: TESTS] Fixing test failures ==="
+
+    # Detect test type for appropriate fixer
+    HAS_API_TESTS=$(echo "$CI_LOG" | grep -cE "(test_api|test_endpoint|FastAPI)" || echo "0")
+    HAS_DB_TESTS=$(echo "$CI_LOG" | grep -cE "(test_db|database|fixture)" || echo "0")
+    HAS_E2E_TESTS=$(echo "$CI_LOG" | grep -cE "(e2e|playwright|cypress)" || echo "0")
+
+    IF HAS_API_TESTS > 0:
+      test_fixer = "api-test-fixer"
+    ELIF HAS_DB_TESTS > 0:
+      test_fixer = "database-test-fixer"
+    ELIF HAS_E2E_TESTS > 0:
+      test_fixer = "e2e-test-fixer"
+    ELSE:
+      test_fixer = "unit-test-fixer"
+    END IF
+
+    Task(
+      subagent_type="{test_fixer}",
+      model="sonnet",
+      description="Fix CI test failures",
+      prompt="Fix test failures detected in CI.
+
+CI log excerpt (test failures):
+{CI_LOG | grep -E '(FAILED.*test_|pytest.*failed|jest.*failed)' | head -50}
+
+Fix all test failures. Run verification after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ CATEGORY_COMPLETE: TESTS"
+    Output: "   Next category: security (if any)"
+    Exit 0
+
+  ELIF HAS_SECURITY > 0:
+    Output: "=== [CATEGORY: SECURITY] Fixing security failures ==="
+
+    Task(
+      subagent_type="security-scanner",
+      model="sonnet",
+      description="Fix CI security failures",
+      prompt="Fix security vulnerabilities detected in CI.
+
+CI log excerpt (security issues):
+{CI_LOG | grep -E '(security|vulnerability|bandit|safety)' | head -50}
+
+Fix all security issues. Run verification after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ CATEGORY_COMPLETE: SECURITY"
+    Exit 0
+
+  ELSE:
+    # No failures detected or all categories fixed
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ ALL CI CHECKS PASSING"
+    Output: "════════════════════════════════════════════════════════"
+    Output: "   All failure categories have been addressed."
+    Output: "   CI pipeline should be green."
+    Exit 0
+  END IF
+
+ELSE:
+  # ALL-CATEGORIES MODE: Original behavior (fix all categories in parallel)
+  Output: "📋 All-categories mode active - fixing all failures in parallel..."
+  PROCEED TO "DELEGATE IMMEDIATELY" section
+END IF
+```
 
 ---
 

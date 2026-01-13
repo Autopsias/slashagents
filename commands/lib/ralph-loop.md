@@ -262,6 +262,77 @@ IF OUTPUT matches "state.*saved|--continue to resume":
 
 ---
 
+## Workflow Granularity
+
+**v1.5.0+**: Ralph loops now operate at **phase level** instead of story/task level.
+
+### Why Granularity Matters
+
+**Problem with story-level loops:**
+- Each story = 150-200K tokens (fills context window)
+- Phases share context (accumulated confusion/tunnel vision)
+- Only 1 story per 200K context window
+- Recovery from failures uses same confused context
+
+**Solution with phase-level loops:**
+- Each phase = 20-50K tokens
+- Fresh context per phase (no tunnel vision)
+- 4-6 phases per 200K context window
+- Fresh perspective on failures
+
+### Phase Progression by Command
+
+| Command | Phases | Tokens per Phase |
+|---------|--------|------------------|
+| `/epic-dev` | CREATE → DEVELOP → REVIEW | 20-50K |
+| `/epic-dev-full` | CREATE → VALIDATION → ATDD → DEV → REVIEW → AUTOMATE → TEST_REVIEW → TRACE (8 phases) | 20-40K |
+| `/ci-orchestrate` | LINTING → TYPES → TESTS | 30-50K |
+| `/test-orchestrate` | UNIT → INTEGRATION → E2E → API → DATABASE | 25-40K |
+| `/code-quality` | COMPLEXITY → FILE_LENGTH → DUPLICATION | 20-35K |
+
+### Implementation Pattern
+
+Commands using phase-level granularity add `--phase-single` to the inner command:
+
+```markdown
+# In Ralph Loop section:
+IF "$ARGUMENTS" contains "--loop":
+  # Phase-single flag enables one-phase-per-iteration
+  inner_command = "/{command} {flags} --phase-single"
+```
+
+The `--phase-single` flag causes the command to:
+1. Detect the next incomplete phase
+2. Execute ONLY that phase
+3. Update state (sprint-status.yaml or equivalent)
+4. Exit with `PHASE_COMPLETE: {phase_name}` signal
+
+### Comparison Table
+
+| Aspect | Story-Level | Phase-Level |
+|--------|-------------|-------------|
+| **Iteration Unit** | Entire story (5+ phases) | Single phase |
+| **Token Cost** | 150-200K per iteration | 20-50K per iteration |
+| **Iterations per 200K** | 1 story | 4-6 phases |
+| **Context Accumulation** | High (phases share context) | None (fresh per phase) |
+| **Recovery from Failures** | Tunnel vision by end | Fresh perspective each phase |
+| **Git Commits** | 1 per story | 1 per phase |
+| **User Intervention** | Between stories only | Between phases |
+
+### Best Practices Research
+
+**Anthropic's Approach:**
+> "Incremental, one-feature-per-session loops reduced wasted tokens and rework compared to monolithic attempts"
+
+**snarktank/ralph Pattern:**
+> "Pick the next failing story, implement, test, commit, update, and log"
+This is PHASE-level: implement → test → commit (not multi-phase story)
+
+**Boris Cherny's Pattern:**
+> "Work on exactly one task. Check browser console, confirm change matches acceptance criteria, append to activity.md, update plan.md, make one git commit."
+
+---
+
 ## Attribution
 
 The Ralph Loop pattern is inspired by [snarktank/ralph](https://github.com/snarktank/ralph) (2.5k stars).

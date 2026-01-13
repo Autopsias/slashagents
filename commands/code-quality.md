@@ -1,6 +1,6 @@
 ---
 description: "Analyze and fix code quality issues - file sizes, function lengths, complexity"
-argument-hint: "[--check] [--fix] [--dry-run] [--refresh-exceptions] [--focus=file-size|function-length|complexity] [--path=...] [--max-parallel=N] [--no-chain] [--continue] [--loop N] [--loop-delay S]"
+argument-hint: "[--check] [--fix] [--dry-run] [--refresh-exceptions] [--focus=file-size|function-length|complexity] [--path=...] [--max-parallel=N] [--no-chain] [--continue] [--loop N] [--loop-delay S] [--fix-single-rule]"
 allowed-tools: ["Task", "Bash", "Grep", "Read", "Glob", "TodoWrite", "SlashCommand", "AskUserQuestion"]
 ---
 
@@ -103,7 +103,8 @@ IF "$ARGUMENTS" contains "--loop":
   Output: ""
 
   # Build inner command (without --loop to avoid infinite recursion)
-  inner_command = "/code_quality {inner_flags}"
+  # --fix-single-rule flag enables rule-level granularity (one rule per iteration)
+  inner_command = "/code_quality {inner_flags} --fix-single-rule"
 
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
@@ -184,6 +185,188 @@ IF "$ARGUMENTS" contains "--loop":
 
 ELSE:
   # Normal execution - continue to STEP 1.5
+  PROCEED TO STEP 1.5
+END IF
+```
+
+---
+
+## STEP 1.26: Rule-Level Mode Detection (Phase Granularity)
+
+**If `--fix-single-rule` is present, execute only ONE category of quality violations per iteration.**
+
+This provides phase-level granularity for Ralph loops, resulting in:
+- 20-35K tokens per iteration (vs 60-100K for all categories)
+- Fresh context per rule category (prevents tunnel vision)
+- Better recovery from failures
+
+```
+IF "--fix-single-rule" in "$ARGUMENTS":
+  # RULE-LEVEL MODE: Execute ONLY the next category of violations
+
+  Output: "📋 Rule-level mode active - fixing ONE quality category..."
+
+  # Run quality checks and detect violation categories
+  ```bash
+  echo "=== Analyzing Quality Violations ==="
+
+  # Check for file size violations
+  FILE_SIZE_OUT=""
+  if [ -f ~/.claude/scripts/quality/check_file_sizes.py ]; then
+      if command -v uv &> /dev/null; then
+          FILE_SIZE_OUT=$(uv run python ~/.claude/scripts/quality/check_file_sizes.py --project "$PWD" 2>&1 || true)
+      else
+          FILE_SIZE_OUT=$(python3 ~/.claude/scripts/quality/check_file_sizes.py --project "$PWD" 2>&1 || true)
+      fi
+  fi
+  HAS_FILE_SIZE=$(echo "$FILE_SIZE_OUT" | grep -cE "BLOCKING|violation" || echo "0")
+
+  # Check for function length violations
+  FUNC_LEN_OUT=""
+  if [ -f ~/.claude/scripts/quality/check_function_lengths.py ]; then
+      FUNC_LEN_OUT=$(python3 ~/.claude/scripts/quality/check_function_lengths.py --project "$PWD" 2>&1 || true)
+  fi
+  HAS_FUNC_LEN=$(echo "$FUNC_LEN_OUT" | grep -cE "BLOCKING|violation|>100 lines" || echo "0")
+
+  # Check for complexity violations (if available)
+  HAS_COMPLEXITY=0
+  if [ -f ~/.claude/scripts/quality/check_complexity.py ]; then
+      COMPLEX_OUT=$(python3 ~/.claude/scripts/quality/check_complexity.py --project "$PWD" 2>&1 || true)
+      HAS_COMPLEXITY=$(echo "$COMPLEX_OUT" | grep -cE "complexity|violation" || echo "0")
+  fi
+  ```
+
+  # Execute ONLY the first detected category (priority order: complexity → function-length → file-size)
+  IF HAS_COMPLEXITY > 0:
+    Output: "=== [RULE: COMPLEXITY] Fixing high-complexity functions ==="
+
+    Task(
+      subagent_type="code-quality-analyzer",
+      model="sonnet",
+      description="Fix complexity violations",
+      prompt="Fix high-complexity functions in the codebase.
+
+Quality check output:
+{COMPLEX_OUT | head -50}
+
+Target: Cyclomatic complexity < 12 per function
+
+Split complex functions, extract helper methods, simplify conditional logic.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'remaining_issues': N,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ RULE_COMPLETE: COMPLEXITY"
+    Output: "   Next rule: function-length (if any)"
+    Exit 0
+
+  ELIF HAS_FUNC_LEN > 0:
+    Output: "=== [RULE: FUNCTION-LENGTH] Fixing long functions ==="
+
+    # Get list of files with function length violations
+    VIOLATION_FILES=$(echo "$FUNC_LEN_OUT" | grep -E "BLOCKING|>100 lines" | grep -oE "[a-zA-Z0-9_/]+\.py" | sort -u | head -3)
+
+    Task(
+      subagent_type="safe-refactor",
+      model="sonnet",
+      description="Fix function length violations",
+      prompt="Refactor long functions in these files:
+
+Files with violations:
+$VIOLATION_FILES
+
+Quality check output:
+{FUNC_LEN_OUT | head -50}
+
+Target: Functions < 100 lines
+
+Use TEST-SAFE workflow:
+1. Run existing tests, establish GREEN baseline
+2. Split long functions using facade pattern
+3. Verify tests pass after each change
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'remaining_issues': N,
+  'new_structure': {
+    'longest_function_lines': N,
+    'target_threshold': 100,
+    'meets_threshold': true|false
+  },
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ RULE_COMPLETE: FUNCTION-LENGTH"
+    Output: "   Next rule: file-size (if any)"
+    Exit 0
+
+  ELIF HAS_FILE_SIZE > 0:
+    Output: "=== [RULE: FILE-SIZE] Fixing oversized files ==="
+
+    # Get list of files with file size violations
+    VIOLATION_FILES=$(echo "$FILE_SIZE_OUT" | grep -E "BLOCKING" | grep -oE "[a-zA-Z0-9_/]+\.py" | sort -u | head -3)
+
+    Task(
+      subagent_type="safe-refactor",
+      model="sonnet",
+      description="Fix file size violations",
+      prompt="Refactor oversized files:
+
+Files with violations:
+$VIOLATION_FILES
+
+Quality check output:
+{FILE_SIZE_OUT | head -50}
+
+Target: Production files < 500 LOC, Test files < 800 LOC
+
+Use TEST-SAFE workflow:
+1. Run existing tests, establish GREEN baseline
+2. Extract modules using facade pattern
+3. Verify tests pass after each change
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'remaining_issues': N,
+  'new_structure': {
+    'largest_file_loc': N,
+    'target_threshold': 500,
+    'meets_threshold': true|false
+  },
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ RULE_COMPLETE: FILE-SIZE"
+    Exit 0
+
+  ELSE:
+    # No violations detected or all categories fixed
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ ALL QUALITY CHECKS PASSING"
+    Output: "════════════════════════════════════════════════════════"
+    Output: "   All quality rule categories have been addressed."
+    Output: "   Codebase meets quality thresholds."
+    Exit 0
+  END IF
+
+ELSE:
+  # ALL-RULES MODE: Original behavior (fix all categories with smart batching)
+  Output: "📋 All-rules mode active - fixing all quality violations..."
   PROCEED TO STEP 1.5
 END IF
 ```

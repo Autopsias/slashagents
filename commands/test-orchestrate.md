@@ -1,6 +1,6 @@
 ---
 description: "Orchestrate test failure analysis and coordinate parallel specialist test fixers with strategic analysis mode"
-argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--strategic] [--research] [--force-escalate] [--no-chain] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only] [--only-category=<unit|integration|e2e|acceptance>] [--loop N] [--loop-delay S]"
+argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--strategic] [--research] [--force-escalate] [--no-chain] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only] [--only-category=<unit|integration|e2e|acceptance>] [--loop N] [--loop-delay S] [--fix-single-type]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---
 
@@ -112,7 +112,8 @@ IF "$ARGUMENTS" contains "--loop":
   Output: ""
 
   # Build inner command (without --loop to avoid infinite recursion)
-  inner_command = "/test_orchestrate {inner_flags}"
+  # --fix-single-type flag enables type-level granularity (one test type per iteration)
+  inner_command = "/test_orchestrate {inner_flags} --fix-single-type"
 
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
@@ -192,6 +193,222 @@ IF "$ARGUMENTS" contains "--loop":
 
 ELSE:
   # Normal execution - continue to STEP 1
+  PROCEED TO STEP 1
+END IF
+```
+
+---
+
+## STEP 0.6: Type-Level Mode Detection (Phase Granularity)
+
+**If `--fix-single-type` is present, execute only ONE type of test failures per iteration.**
+
+This provides phase-level granularity for Ralph loops, resulting in:
+- 25-40K tokens per iteration (vs 80-120K for all types)
+- Fresh context per test type (prevents tunnel vision)
+- Better recovery from failures
+
+```
+IF "--fix-single-type" in "$ARGUMENTS":
+  # TYPE-LEVEL MODE: Execute ONLY the next type of failures
+
+  Output: "📋 Type-level mode active - fixing ONE test type..."
+
+  # Run tests and analyze failures by type
+  ```bash
+  cd apps/api && TEST_OUTPUT=$(uv run pytest -v --tb=short 2>&1 || true)
+  cd ../..
+
+  # Detect failure types (in priority order)
+  HAS_UNIT=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_unit|tests/unit.*FAILED" || echo "0")
+  HAS_API=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_api|test_endpoint|tests/integration/api" || echo "0")
+  HAS_DB=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_db|database|fixture.*db" || echo "0")
+  HAS_E2E=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_e2e|playwright|cypress" || echo "0")
+  HAS_IMPORT=$(echo "$TEST_OUTPUT" | grep -cE "ImportError|ModuleNotFoundError" || echo "0")
+  HAS_TYPE=$(echo "$TEST_OUTPUT" | grep -cE "TypeError|mypy.*error" || echo "0")
+  ```
+
+  # Execute ONLY the first detected type (priority order: foundational → complex)
+  IF HAS_IMPORT > 0:
+    Output: "=== [TYPE: IMPORTS] Fixing import/module failures ==="
+
+    Task(
+      subagent_type="import-error-fixer",
+      model="haiku",
+      description="Fix import failures",
+      prompt="Fix import and module resolution failures in tests.
+
+Test output (import errors):
+{TEST_OUTPUT | grep -E 'ImportError|ModuleNotFoundError' | head -30}
+
+Fix all import issues. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ TYPE_COMPLETE: IMPORTS"
+    Output: "   Next type: types (if any)"
+    Exit 0
+
+  ELIF HAS_TYPE > 0:
+    Output: "=== [TYPE: TYPES] Fixing type-related failures ==="
+
+    Task(
+      subagent_type="type-error-fixer",
+      model="sonnet",
+      description="Fix type failures",
+      prompt="Fix type-related test failures.
+
+Test output (type errors):
+{TEST_OUTPUT | grep -E 'TypeError|mypy.*error' | head -30}
+
+Fix all type errors. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ TYPE_COMPLETE: TYPES"
+    Output: "   Next type: unit (if any)"
+    Exit 0
+
+  ELIF HAS_UNIT > 0:
+    Output: "=== [TYPE: UNIT] Fixing unit test failures ==="
+
+    Task(
+      subagent_type="unit-test-fixer",
+      model="sonnet",
+      description="Fix unit test failures",
+      prompt="Fix unit test failures.
+
+Test output (unit test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_unit|tests/unit.*FAILED' -A 5 | head -50}
+
+Fix all unit test failures. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ TYPE_COMPLETE: UNIT"
+    Output: "   Next type: api (if any)"
+    Exit 0
+
+  ELIF HAS_API > 0:
+    Output: "=== [TYPE: API] Fixing API test failures ==="
+
+    Task(
+      subagent_type="api-test-fixer",
+      model="sonnet",
+      description="Fix API test failures",
+      prompt="Fix API endpoint test failures.
+
+Test output (API test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_api|test_endpoint' -A 5 | head -50}
+
+Fix all API test failures. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ TYPE_COMPLETE: API"
+    Output: "   Next type: database (if any)"
+    Exit 0
+
+  ELIF HAS_DB > 0:
+    Output: "=== [TYPE: DATABASE] Fixing database test failures ==="
+
+    Task(
+      subagent_type="database-test-fixer",
+      model="sonnet",
+      description="Fix database test failures",
+      prompt="Fix database-related test failures.
+
+Test output (database test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_db|database|fixture.*db' -A 5 | head -50}
+
+Fix all database test failures. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ TYPE_COMPLETE: DATABASE"
+    Output: "   Next type: e2e (if any)"
+    Exit 0
+
+  ELIF HAS_E2E > 0:
+    Output: "=== [TYPE: E2E] Fixing E2E test failures ==="
+
+    Task(
+      subagent_type="e2e-test-fixer",
+      model="sonnet",
+      description="Fix E2E test failures",
+      prompt="Fix end-to-end test failures.
+
+Test output (E2E test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_e2e|playwright|cypress' -A 5 | head -50}
+
+Fix all E2E test failures. Run tests after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    Output: "✅ TYPE_COMPLETE: E2E"
+    Exit 0
+
+  ELSE:
+    # No failures detected or all types fixed
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ ALL TESTS PASSING"
+    Output: "════════════════════════════════════════════════════════"
+    Output: "   All test types have been addressed."
+    Output: "   Test suite should be green."
+    Exit 0
+  END IF
+
+ELSE:
+  # ALL-TYPES MODE: Original behavior (fix all types in parallel)
+  Output: "📋 All-types mode active - fixing all test failures in parallel..."
   PROCEED TO STEP 1
 END IF
 ```

@@ -173,20 +173,44 @@ Add `--loop N` to any supported command:
 
 ### Supported Commands
 
-| Command | Completion Signal |
-|---------|-------------------|
-| `/epic-dev` | Epic complete |
-| `/epic-dev-full` | Epic complete |
-| `/code-quality` | All violations fixed |
-| `/test-orchestrate` | All tests passing |
-| `/ci-orchestrate` | All CI checks passing |
+| Command | Completion Signal | Granularity |
+|---------|-------------------|-------------|
+| `/epic-dev` | Epic complete | **Phase-level** (CREATE → DEVELOP → REVIEW) |
+| `/epic-dev-full` | Epic complete | **Phase-level** (8 phases: CREATE → VALIDATION → ATDD → DEV → REVIEW → AUTOMATE → TEST_REVIEW → TRACE) |
+| `/code-quality` | All violations fixed | **Rule-level** (complexity → file-length → duplication) |
+| `/test-orchestrate` | All tests passing | **Type-level** (unit → integration → e2e) |
+| `/ci-orchestrate` | All CI checks passing | **Category-level** (linting → types → tests) |
 
 ### How It Works
 
 1. Spawns a **fresh Claude instance** per iteration (full 200K context)
-2. Detects **completion signals** to exit early on success
-3. Detects **blocking signals** to halt for human intervention
-4. Configurable max iterations (`--loop N`) and delay (`--loop-delay S`)
+2. Executes **one phase/category** per iteration (not entire workflow)
+3. Detects **completion signals** to exit early on success
+4. Detects **blocking signals** to halt for human intervention
+5. Configurable max iterations (`--loop N`) and delay (`--loop-delay S`)
+
+### Phase-Level Granularity (v1.5.0+)
+
+Ralph loops now operate at **phase level** instead of story/task level for improved token efficiency and fresh perspective per phase:
+
+| Aspect | Before (Story-Level) | After (Phase-Level) |
+|--------|---------------------|---------------------|
+| **Token Cost** | 150-200K per iteration | 20-50K per iteration |
+| **Context** | Accumulated (tunnel vision) | Fresh per phase |
+| **Checkpoints** | 1 per story | 1 per phase |
+| **User Intervention** | Between stories only | Between phases |
+
+**Example flow with `/epic-dev 2 --loop 10`:**
+
+```
+Iteration 1: [PHASE: CREATE] Creating story 2-1-auth
+Iteration 2: [PHASE: DEVELOP] Implementing story 2-1-auth (with Gate 2.5 verification)
+Iteration 3: [PHASE: REVIEW] Reviewing story 2-1-auth (with Gate 3.5 verification)
+Iteration 4: [PHASE: CREATE] Creating story 2-2-profile
+...
+```
+
+Each iteration gets fresh context, preventing accumulated confusion and enabling better recovery from failures.
 
 > **Attribution:** Pattern inspired by [snarktank/ralph](https://github.com/snarktank/ralph)
 

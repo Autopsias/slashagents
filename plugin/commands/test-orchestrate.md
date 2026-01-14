@@ -1,6 +1,6 @@
 ---
 description: "Orchestrate test failure analysis and coordinate parallel specialist test fixers with strategic analysis mode"
-argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--strategic] [--research] [--force-escalate] [--no-chain] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only] [--only-category=<unit|integration|e2e|acceptance>]"
+argument-hint: "[test_scope] [--run-first] [--coverage] [--fast] [--strategic] [--research] [--force-escalate] [--no-chain] [--api-only] [--database-only] [--vitest-only] [--pytest-only] [--playwright-only] [--only-category=<unit|integration|e2e|acceptance>] [--loop N] [--loop-delay S] [--fix-single-type]"
 allowed-tools: ["Task", "TodoWrite", "Bash", "Grep", "Read", "LS", "Glob", "SlashCommand"]
 ---
 
@@ -81,6 +81,478 @@ If TEST_FIX_COUNT >= 3:
 | Otherwise | TACTICAL (default) |
 
 Report the mode: "Operating in [TACTICAL/STRATEGIC] mode."
+
+---
+
+## STEP 0.5: Ralph Loop Mode Detection (Fresh Context)
+
+**If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.**
+
+This enables unattended/overnight test fixing by spawning NEW Claude instances per iteration.
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  # Determine inner command flags (preserve all except --loop)
+  inner_flags = "$ARGUMENTS" without "--loop" and "--loop-delay"
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (Test Orchestration)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended test fixing"
+  Output: "  Inner flags: {inner_flags}"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  # --fix-single-type flag enables type-level granularity (one test type per iteration)
+  inner_command = "/test_orchestrate {inner_flags} --fix-single-type"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 12 minutes
+    ```bash
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=12
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    LOG_FILE="/tmp/ralph-loop-test-orchestrate-iter-${iteration}.log"
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    EXIT_CODE=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat "$LOG_FILE")
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f "$LOG_FILE"
+    ```
+
+    # Check for completion signals (all tests passing)
+    IF OUTPUT matches regex "All tests passing|PYTEST_FAILURES=0.*VITEST_FAILURES=0|status.*all_passing|0 failures":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  All tests fixed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|Maximum orchestration depth":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /test_orchestrate --loop {remaining_iterations} {inner_flags}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for strategic mode suggestion (recurring failures)
+    IF OUTPUT matches regex "Run with --strategic for root cause analysis":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "🔬 RALPH LOOP: Escalating to Strategic Mode"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Tests still failing after iteration {iteration}"
+      Output: "  Adding --strategic flag for next iteration..."
+      Output: "════════════════════════════════════════════════════════"
+      inner_command = "/test_orchestrate --strategic {inner_flags}"
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without all tests passing"
+  Output: "  Some test failures may remain"
+  Output: "  Action: Check test results with /test_orchestrate"
+  Output: "  Resume: /test_orchestrate --loop {loop_max} --strategic"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 1
+  PROCEED TO STEP 1
+END IF
+```
+
+---
+
+## STEP 0.6: Type-Level Mode Detection (Phase Granularity)
+
+**If `--fix-single-type` is present, execute only ONE type of test failures per iteration.**
+
+This provides phase-level granularity for Ralph loops, resulting in:
+- 25-40K tokens per iteration (vs 80-120K for all types)
+- Fresh context per test type (prevents tunnel vision)
+- Better recovery from failures
+
+```
+IF "--fix-single-type" in "$ARGUMENTS":
+  # TYPE-LEVEL MODE: Execute ONLY the next type of failures
+
+  Output: "📋 Type-level mode active - fixing ONE test type..."
+
+  # DEFENSIVE: Initialize state file for recovery
+  STATE_FILE=".claude/state/test-orchestration.json"
+  mkdir -p .claude/state
+
+  IF NOT exists "{STATE_FILE}":
+    Write state file:
+    {
+      "schema_version": "1.0",
+      "current_type": null,
+      "types_completed": [],
+      "types_remaining": ["import", "type", "unit", "api", "database", "e2e"],
+      "iteration": 0,
+      "last_updated": "{timestamp}"
+    }
+
+  # Load existing state
+  STATE = Read("{STATE_FILE}")
+
+  # Run tests and analyze failures by type
+  ```bash
+  cd apps/api && TEST_OUTPUT=$(uv run pytest -v --tb=short 2>&1 || true)
+  cd ../..
+
+  # Detect failure types (in priority order)
+  HAS_UNIT=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_unit|tests/unit.*FAILED" || echo "0")
+  HAS_API=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_api|test_endpoint|tests/integration/api" || echo "0")
+  HAS_DB=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_db|database|fixture.*db" || echo "0")
+  HAS_E2E=$(echo "$TEST_OUTPUT" | grep -cE "FAILED.*test_e2e|playwright|cypress" || echo "0")
+  HAS_IMPORT=$(echo "$TEST_OUTPUT" | grep -cE "ImportError|ModuleNotFoundError" || echo "0")
+  HAS_TYPE=$(echo "$TEST_OUTPUT" | grep -cE "TypeError|mypy.*error" || echo "0")
+  ```
+
+  # Execute ONLY the first detected type (priority order: foundational → complex)
+  IF HAS_IMPORT > 0:
+    Output: "=== [TYPE: IMPORTS] Fixing import/module failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call (protects against hangs)
+    Update STATE:
+      - current_type: "import"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Task(
+      subagent_type="import-error-fixer",
+      model="haiku",
+      description="Fix import failures",
+      prompt="Fix import and module resolution failures in tests.
+
+Test output (import errors):
+{TEST_OUTPUT | grep -E 'ImportError|ModuleNotFoundError' | head -30}
+
+Fix all import issues. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "import"]
+      - types_remaining: [filter "import" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Output: "✅ TYPE_COMPLETE: IMPORTS"
+    Output: "   Next type: types (if any)"
+    Exit 0
+
+  ELIF HAS_TYPE > 0:
+    Output: "=== [TYPE: TYPES] Fixing type-related failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "type"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Task(
+      subagent_type="type-error-fixer",
+      model="sonnet",
+      description="Fix type failures",
+      prompt="Fix type-related test failures.
+
+Test output (type errors):
+{TEST_OUTPUT | grep -E 'TypeError|mypy.*error' | head -30}
+
+Fix all type errors. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "type"]
+      - types_remaining: [filter "type" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Output: "✅ TYPE_COMPLETE: TYPES"
+    Output: "   Next type: unit (if any)"
+    Exit 0
+
+  ELIF HAS_UNIT > 0:
+    Output: "=== [TYPE: UNIT] Fixing unit test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "unit"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Task(
+      subagent_type="unit-test-fixer",
+      model="sonnet",
+      description="Fix unit test failures",
+      prompt="Fix unit test failures.
+
+Test output (unit test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_unit|tests/unit.*FAILED' -A 5 | head -50}
+
+Fix all unit test failures. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "unit"]
+      - types_remaining: [filter "unit" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Output: "✅ TYPE_COMPLETE: UNIT"
+    Output: "   Next type: api (if any)"
+    Exit 0
+
+  ELIF HAS_API > 0:
+    Output: "=== [TYPE: API] Fixing API test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "api"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Task(
+      subagent_type="api-test-fixer",
+      model="sonnet",
+      description="Fix API test failures",
+      prompt="Fix API endpoint test failures.
+
+Test output (API test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_api|test_endpoint' -A 5 | head -50}
+
+Fix all API test failures. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "api"]
+      - types_remaining: [filter "api" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Output: "✅ TYPE_COMPLETE: API"
+    Output: "   Next type: database (if any)"
+    Exit 0
+
+  ELIF HAS_DB > 0:
+    Output: "=== [TYPE: DATABASE] Fixing database test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "database"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Task(
+      subagent_type="database-test-fixer",
+      model="sonnet",
+      description="Fix database test failures",
+      prompt="Fix database-related test failures.
+
+Test output (database test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_db|database|fixture.*db' -A 5 | head -50}
+
+Fix all database test failures. Run pytest after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "database"]
+      - types_remaining: [filter "database" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Output: "✅ TYPE_COMPLETE: DATABASE"
+    Output: "   Next type: e2e (if any)"
+    Exit 0
+
+  ELIF HAS_E2E > 0:
+    Output: "=== [TYPE: E2E] Fixing E2E test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "e2e"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Task(
+      subagent_type="e2e-test-fixer",
+      model="sonnet",
+      description="Fix E2E test failures",
+      prompt="Fix end-to-end test failures.
+
+Test output (E2E test failures):
+{TEST_OUTPUT | grep -E 'FAILED.*test_e2e|playwright|cypress' -A 5 | head -50}
+
+Fix all E2E test failures. Run tests after.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'tests_fixed': N,
+  'files_modified': ['...'],
+  'verification_passed': true|false,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "e2e"]
+      - types_remaining: [filter "e2e" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
+    Output: "✅ TYPE_COMPLETE: E2E"
+    Output: "   State file: {STATE_FILE}"
+    Exit 0
+
+  ELSE:
+    # No failures detected or all types fixed
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ ALL TESTS PASSING"
+    Output: "════════════════════════════════════════════════════════"
+    Output: "   All test types have been addressed."
+    Output: "   Test suite should be green."
+    Exit 0
+  END IF
+
+ELSE:
+  # ALL-TYPES MODE: Original behavior (fix all types in parallel)
+  Output: "📋 All-types mode active - fixing all test failures in parallel..."
+  PROCEED TO STEP 1
+END IF
+```
 
 ---
 

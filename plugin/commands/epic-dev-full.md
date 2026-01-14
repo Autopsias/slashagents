@@ -1,6 +1,6 @@
 ---
 description: "Full TDD/ATDD-driven BMAD development cycle with comprehensive test phases and quality gates"
-argument-hint: "<epic-number> [--yolo] [--resume]"
+argument-hint: "<epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S]"
 allowed-tools: ["Task", "SlashCommand", "Read", "Write", "Edit", "Bash", "Grep", "Glob", "TodoWrite", "AskUserQuestion"]
 ---
 
@@ -12,16 +12,19 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 
 **YOU ARE A PURE ORCHESTRATOR - DELEGATION ONLY**
 - ❌ NEVER execute workflows directly - you are a pure orchestrator
-- ❌ NEVER use Edit, Write, MultiEdit tools yourself
 - ❌ NEVER implement story tasks or fix code yourself
 - ❌ NEVER run SlashCommand directly - delegate to subagents
-- ✅ MUST delegate ALL work to subagents via Task tool
-- ✅ Your role is ONLY to: read state, delegate tasks, verify completion, update session
+- ✅ MUST delegate ALL implementation work to subagents via Task tool
+- ✅ Your role is ONLY to: read state, delegate tasks, verify completion
+- ✅ **EXCEPTION: You MUST use Edit tool DIRECTLY for status file updates**
+     (sprint-status.yaml story/epic status AND story file Status field)
+     This is NOT delegated because subagents don't have orchestration context.
 
 **GUARD RAIL CHECK**: Before ANY action ask yourself:
 - "Am I about to do work directly?" → If YES: STOP and delegate via Task instead
 - "Am I using Read/Bash to check state?" → OK to proceed
 - "Am I using Task tool to spawn a subagent?" → Correct approach
+- "Am I using Edit for sprint-status.yaml or story Status field?" → OK (exception for status updates)
 
 **SUBAGENT EXECUTION PATTERN**: Each Task call spawns an independent subagent that:
 - Has its own context window (preserves main agent context)
@@ -63,10 +66,143 @@ Parse "$ARGUMENTS" to extract:
 - **epic_number** (required): First positional argument (e.g., "2" for Epic 2)
 - **--resume**: Continue from last incomplete story/phase
 - **--yolo**: Skip user confirmation pauses between stories
+- **--force-model**: Skip model selection confirmation prompts (enables unattended automation)
 
 **Validation:**
 - epic_number must be a positive integer
-- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume]"
+- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S] [--force-model]"
+
+---
+
+## STEP 1.5: Ralph Loop Mode Detection
+
+**If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.**
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (Full TDD/ATDD Workflow)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Epic: {epic_num}"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended (--yolo implied)"
+  Output: "  Workflow: Full 8-phase TDD/ATDD cycle"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  # --phase-single flag enables phase-level granularity (one phase per iteration)
+  # --force-model flag bypasses model confirmation prompts (inherited from parent)
+  inner_command = "/epic-dev-full {epic_num} --yolo --phase-single --force-model"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 20 minutes
+    ```bash
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=20
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    claude -p "{inner_command}" --dangerously-skip-permissions > /tmp/ralph-loop-${epic_num}-iter-${iteration}.log 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat /tmp/ralph-loop-${epic_num}-iter-${iteration}.log)
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f /tmp/ralph-loop-${epic_num}-iter-${iteration}.log
+    ```
+
+    # Check for epic completion signals
+    IF OUTPUT matches regex "✅ EPIC.*COMPLETE|All stories in Epic.*complete|Epic.*finished":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Epic {epic_num} completed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "  Workflow: Full 8-phase TDD/ATDD cycle"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|STATUS UPDATE FAILED":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /epic-dev-full {epic_num} --loop {remaining_iterations}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without completion"
+  Output: "  Epic {epic_num} may have remaining stories"
+  Output: "  Action: Check sprint-status.yaml for progress"
+  Output: "  Resume: /epic-dev-full {epic_num} --loop {loop_max}"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 2
+  PROCEED TO STEP 2
+END IF
+```
 
 ---
 
@@ -176,6 +312,553 @@ epic_dev_session:
 ## STEP 5: Story Processing Loop
 
 **CRITICAL: Process stories SERIALLY (one at a time)**
+
+**Phase-Level Mode Detection:**
+
+```
+IF "--phase-single" in "$ARGUMENTS":
+  # PHASE-LEVEL MODE: Execute ONLY the next incomplete phase
+
+  Output: "📋 Phase-level mode active (Full TDD/ATDD) - executing next incomplete phase..."
+
+  # Load session state from sprint-status.yaml
+  content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+  # Extract session info (epic_dev_session)
+  session = Extract epic_dev_session from content
+  current_phase = session.phase
+  current_story = session.current_story
+
+  # If no session or phase is "starting" or "complete", find next story
+  IF current_phase == "starting" OR current_phase == "complete" OR current_story is null:
+    # Find next incomplete story
+    FOR each story in epic {epic_number}:
+      IF story.status == "backlog":
+        current_story = story_key
+        current_phase = "create_story"
+        BREAK
+      ELIF story.status == "created":
+        current_story = story_key
+        current_phase = "validation"
+        BREAK
+      # ... continue for other statuses
+    END FOR
+
+    IF current_story is null:
+      Output: "✅ ALL STORIES COMPLETE - Epic {epic_num} done!"
+      Exit 0
+  END IF
+
+  # Execute the current phase for current_story
+  Output: "=== Executing phase '{current_phase}' for story: {current_story} ==="
+
+  # Phase 1: Create Story
+  IF current_phase == "create_story":
+    Output: "=== [Phase 1/8] Creating story: {current_story} (opus) ==="
+
+    # DEFENSIVE: Update session BEFORE Task call (protects against hangs)
+    Update session:
+      - phase: "create_story"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Task(
+      subagent_type="epic-story-creator",
+      model="opus",
+      description="Create story {current_story}",
+      prompt="Create story for {current_story}.
+
+Context:
+- Epic file: {sprint_artifacts}/epic-{epic_num}.md
+- Story key: {current_story}
+- Sprint artifacts: {sprint_artifacts}
+
+Execute the BMAD create-story workflow.
+Return ONLY JSON: {story_path, ac_count, task_count, status}"
+    )
+
+    # Update session to next phase (after successful completion)
+    Update session:
+      - phase: "create_complete"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: CREATE_STORY {current_story}"
+    Output: "   Next phase: validation"
+    Exit 0
+
+  # Phase 2: Validate Story
+  ELIF current_phase == "create_complete" OR current_phase == "validation":
+    Output: "=== [Phase 2/8] Validating story: {current_story} (sonnet) ==="
+
+    Task(
+      subagent_type="epic-story-validator",
+      model="sonnet",
+      description="Validate story {current_story}",
+      prompt="Validate story {current_story}.
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+- Epic: {epic_num}
+
+Check: story header, BDD acceptance criteria, task links.
+Return ONLY JSON: {pass_rate, total_issues, critical_issues}"
+    )
+
+    # If validation passes (pass_rate == 100), move to next phase
+    # If not, user can re-run to continue validation iterations
+    Update session:
+      - phase: "validation_complete"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: VALIDATION {current_story}"
+    Output: "   Next phase: testarch_atdd"
+    Exit 0
+
+  # Phase 3: ATDD - Generate Acceptance Tests
+  ELIF current_phase == "validation_complete" OR current_phase == "testarch_atdd":
+    Output: "=== [Phase 3/8] TDD RED Phase - Generating acceptance tests: {current_story} (opus) ==="
+
+    # DEFENSIVE: Update session BEFORE Task call
+    Update session:
+      - phase: "testarch_atdd"
+      - current_story: {current_story}
+      - tdd_phase: "red"
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Task(
+      subagent_type="epic-atdd-writer",
+      model="opus",
+      description="Generate ATDD tests for {current_story}",
+      prompt="Generate ATDD tests for story {current_story} (TDD RED phase).
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+- Phase: 3 (ATDD)
+
+Execute /bmad:bmm:workflows:testarch-atdd workflow.
+All tests MUST fail initially (RED state).
+Return ONLY JSON: {checklist_file, tests_created, test_files, acs_covered}"
+    )
+
+    # Update session after successful completion
+    Update session:
+      - phase: "atdd_complete"
+      - current_story: {current_story}
+      - tdd_phase: "red"
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: ATDD {current_story}"
+    Output: "   Tests in RED state (all failing as expected)"
+    Output: "   Next phase: dev_story"
+    Exit 0
+
+  # Phase 4: Dev Story - Implementation
+  ELIF current_phase == "atdd_complete" OR current_phase == "dev_story":
+    Output: "=== [Phase 4/8] TDD GREEN Phase - Implementing story: {current_story} (sonnet) ==="
+
+    Task(
+      subagent_type="epic-implementer",
+      model="sonnet",
+      description="Implement story {current_story}",
+      prompt="Implement story {current_story} (TDD GREEN phase).
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+
+Execute /bmad:bmm:workflows:dev-story workflow.
+Make all tests pass. Run pnpm prepush before completing.
+Return ONLY JSON: {tests_passing, prepush_status, files_modified}"
+    )
+
+    # Run verification gate 4.5
+    Output: "=== [Gate 4.5] Verifying test state ==="
+    verification_iteration = 0
+    max_verification_iterations = 3
+
+    WHILE verification_iteration < max_verification_iterations:
+      ```bash
+      cd {project_root}
+      TEST_OUTPUT=$(cd apps/api && uv run pytest tests -q --tb=short 2>&1 || true)
+      ```
+
+      IF TEST_OUTPUT contains "FAILED" OR "failed":
+        verification_iteration += 1
+        Output: "VERIFICATION ITERATION {verification_iteration}/{max_verification_iterations}"
+
+        IF verification_iteration < max_verification_iterations:
+          Task(
+            subagent_type="epic-implementer",
+            model="sonnet",
+            description="Fix failing tests",
+            prompt="Fix failing tests for story {current_story}.
+Test failures: {TEST_OUTPUT tail -50}
+Return JSON: {fixes_applied, tests_passing}"
+          )
+        ELSE:
+          Output: "ERROR: Max verification iterations reached"
+          Exit 1
+      ELSE:
+        Output: "GATE 4.5 PASSED"
+        BREAK
+    END WHILE
+
+    Update session:
+      - phase: "dev_complete"
+      - current_story: {current_story}
+      - tdd_phase: "complete"
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: DEV_STORY {current_story}"
+    Output: "   Implementation complete, all tests passing (GREEN)"
+    Output: "   Next phase: code_review"
+    Exit 0
+
+  # Phase 5: Code Review
+  ELIF current_phase == "dev_complete" OR current_phase == "code_review":
+    Output: "=== [Phase 5/8] Code Review: {current_story} (opus) ==="
+
+    # DEFENSIVE: Update session BEFORE Task call
+    Update session:
+      - phase: "code_review"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Task(
+      subagent_type="epic-code-reviewer",
+      model="opus",
+      description="Review story {current_story}",
+      prompt="Review implementation for {current_story}.
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+
+Execute /bmad:bmm:workflows:code-review workflow.
+MUST find 3-10 specific issues.
+Return ONLY JSON: {total_issues, high_issues, medium_issues, low_issues}"
+    )
+
+    # Run verification gate 5.5
+    Output: "=== [Gate 5.5] Verifying test state after review ==="
+    verification_iteration = 0
+    max_verification_iterations = 3
+
+    WHILE verification_iteration < max_verification_iterations:
+      ```bash
+      cd {project_root}
+      TEST_OUTPUT=$(cd apps/api && uv run pytest tests -q --tb=short 2>&1 || true)
+      ```
+
+      IF TEST_OUTPUT contains "FAILED" OR "failed":
+        verification_iteration += 1
+        Output: "VERIFICATION ITERATION {verification_iteration}/{max_verification_iterations}"
+
+        IF verification_iteration < max_verification_iterations:
+          Task(
+            subagent_type="epic-implementer",
+            model="sonnet",
+            description="Fix post-review test failures",
+            prompt="Fix test failures after code review for {current_story}.
+Test failures: {TEST_OUTPUT tail -50}
+Return JSON: {fixes_applied, tests_passing}"
+          )
+        ELSE:
+          Output: "ERROR: Max verification iterations reached"
+          Exit 1
+      ELSE:
+        Output: "GATE 5.5 PASSED"
+        BREAK
+    END WHILE
+
+    Update session:
+      - phase: "review_complete"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: CODE_REVIEW {current_story}"
+    Output: "   Code review complete, tests still passing"
+    Output: "   Next phase: testarch_automate"
+    Exit 0
+
+  # Phase 6: Test Automation Expansion
+  ELIF current_phase == "review_complete" OR current_phase == "testarch_automate":
+    Output: "=== [Phase 6/8] Expanding test coverage: {current_story} (sonnet) ==="
+
+    Task(
+      subagent_type="epic-test-expander",
+      model="sonnet",
+      description="Expand test coverage for {current_story}",
+      prompt="Expand test coverage for story {current_story}.
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+
+Execute /bmad:bmm:workflows:testarch-automate workflow.
+Add edge cases, error paths, integration tests.
+Return ONLY JSON: {tests_added, coverage_before, coverage_after}"
+    )
+
+    # Run verification gate 6.5
+    Output: "=== [Gate 6.5] Verifying test state after expansion ==="
+    verification_iteration = 0
+    max_verification_iterations = 3
+
+    WHILE verification_iteration < max_verification_iterations:
+      ```bash
+      cd {project_root}
+      TEST_OUTPUT=$(cd apps/api && uv run pytest tests -q --tb=short 2>&1 || true)
+      ```
+
+      IF TEST_OUTPUT contains "FAILED" OR "failed":
+        verification_iteration += 1
+        Output: "VERIFICATION ITERATION {verification_iteration}/{max_verification_iterations}"
+
+        IF verification_iteration < max_verification_iterations:
+          Task(
+            subagent_type="epic-implementer",
+            model="sonnet",
+            description="Fix post-expansion test failures",
+            prompt="Fix test failures after test expansion for {current_story}.
+Test failures: {TEST_OUTPUT tail -50}
+Return JSON: {fixes_applied, tests_passing}"
+          )
+        ELSE:
+          Output: "ERROR: Max verification iterations reached"
+          Exit 1
+      ELSE:
+        Output: "GATE 6.5 PASSED"
+        BREAK
+    END WHILE
+
+    Update session:
+      - phase: "automate_complete"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: TESTARCH_AUTOMATE {current_story}"
+    Output: "   Test coverage expanded"
+    Output: "   Next phase: testarch_test_review"
+    Exit 0
+
+  # Phase 7: Test Quality Review
+  ELIF current_phase == "automate_complete" OR current_phase == "testarch_test_review":
+    Output: "=== [Phase 7/8] Reviewing test quality: {current_story} (haiku) ==="
+
+    Task(
+      subagent_type="epic-test-reviewer",
+      model="haiku",
+      description="Review test quality for {current_story}",
+      prompt="Review test quality for story {current_story}.
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+
+Execute /bmad:bmm:workflows:testarch-test-review workflow.
+Check BDD format, test IDs, priority markers.
+Return ONLY JSON: {quality_score, grade, tests_reviewed, issues_found}"
+    )
+
+    # Run verification gate 7.5
+    Output: "=== [Gate 7.5] Verifying test state after quality review ==="
+    verification_iteration = 0
+    max_verification_iterations = 3
+
+    WHILE verification_iteration < max_verification_iterations:
+      ```bash
+      cd {project_root}
+      TEST_OUTPUT=$(cd apps/api && uv run pytest tests -q --tb=short 2>&1 || true)
+      ```
+
+      IF TEST_OUTPUT contains "FAILED" OR "failed":
+        verification_iteration += 1
+        Output: "VERIFICATION ITERATION {verification_iteration}/{max_verification_iterations}"
+
+        IF verification_iteration < max_verification_iterations:
+          Task(
+            subagent_type="epic-implementer",
+            model="sonnet",
+            description="Fix post-quality-review test failures",
+            prompt="Fix test failures after quality review for {current_story}.
+Test failures: {TEST_OUTPUT tail -50}
+Return JSON: {fixes_applied, tests_passing}"
+          )
+        ELSE:
+          Output: "ERROR: Max verification iterations reached"
+          Exit 1
+      ELSE:
+        Output: "GATE 7.5 PASSED"
+        BREAK
+    END WHILE
+
+    Update session:
+      - phase: "test_review_complete"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Output: "✅ PHASE_COMPLETE: TESTARCH_TEST_REVIEW {current_story}"
+    Output: "   Test quality validated"
+    Output: "   Next phase: testarch_trace (quality gate)"
+    Exit 0
+
+  # Phase 8: Requirements Traceability & Quality Gate
+  ELIF current_phase == "test_review_complete" OR current_phase == "testarch_trace":
+    Output: "=== [Phase 8/8] Quality Gate Decision: {current_story} (opus) ==="
+
+    # DEFENSIVE: Update session BEFORE Task call
+    Update session:
+      - phase: "testarch_trace"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
+    Task(
+      subagent_type="epic-story-validator",
+      model="opus",
+      description="Quality gate decision for {current_story}",
+      prompt="Make quality gate decision for story {current_story}.
+
+Context:
+- Story file: {sprint_artifacts}/stories/{current_story}.md
+
+Execute /bmad:bmm:workflows:testarch-trace workflow.
+Generate traceability matrix and make gate decision (PASS/CONCERNS/FAIL).
+Return ONLY JSON: {decision, p0_coverage, p1_coverage, overall_coverage}"
+    )
+
+    # If gate passes (PASS or WAIVED), mark story as done
+    IF decision == "PASS" OR decision == "WAIVED":
+      # CRITICAL: Update sprint-status.yaml story status to "done"
+      max_retries = 3
+      retry_count = 0
+
+      WHILE retry_count < max_retries:
+        content = Read("{sprint_artifacts}/sprint-status.yaml")
+        SEARCH for line matching "  {current_story}: " and extract current_status
+
+        IF current_status == "done":
+          Output: "✅ sprint-status.yaml already shows 'done'"
+          BREAK
+
+        Edit(
+          file_path="{sprint_artifacts}/sprint-status.yaml",
+          old_string="  {current_story}: {current_status}",
+          new_string="  {current_story}: done"
+        )
+
+        updated = Read("{sprint_artifacts}/sprint-status.yaml")
+        IF updated contains "  {current_story}: done":
+          Output: "✅ sprint-status.yaml updated successfully"
+          BREAK
+        ELSE:
+          retry_count += 1
+      END WHILE
+
+      # CRITICAL: Update story file Status field to "done"
+      retry_count = 0
+      WHILE retry_count < max_retries:
+        content = Read("{sprint_artifacts}/stories/{current_story}.md")
+        SEARCH for line starting with "Status: " and extract current_status
+
+        IF current_status == "done":
+          Output: "✅ Story file already shows 'done'"
+          BREAK
+
+        Edit(
+          file_path="{sprint_artifacts}/stories/{current_story}.md",
+          old_string="Status: {current_status}",
+          new_string="Status: done"
+        )
+
+        updated = Read("{sprint_artifacts}/stories/{current_story}.md")
+        IF updated contains "Status: done":
+          Output: "✅ Story file status updated successfully"
+          BREAK
+        ELSE:
+          retry_count += 1
+      END WHILE
+
+      # Update session to mark story complete
+      Update session:
+        - phase: "complete"
+        - current_story: {current_story}
+        - gate_decision: {decision}
+        - last_updated: {timestamp}
+      Write sprint-status.yaml
+
+      Output: "✅ PHASE_COMPLETE: TESTARCH_TRACE {current_story}"
+      Output: "   Quality Gate: {decision}"
+      Output: "   Story marked DONE"
+      Output: "   Next iteration will start next story Phase 1"
+      Exit 0
+    ELSE:
+      # FAIL or CONCERNS - needs user decision
+      Output: "⚠️ QUALITY GATE: {decision}"
+      Output: "   Manual intervention required"
+      Exit 1
+    END IF
+
+  ELSE:
+    Output: "ERROR: Unknown phase '{current_phase}'"
+    Exit 1
+  END IF
+
+  # Check if all stories complete
+  all_done = true
+  FOR each story in epic {epic_number}:
+    IF story_status != "done":
+      all_done = false
+      BREAK
+  END FOR
+
+  IF all_done:
+    # Update epic status to done
+    max_retries = 3
+    retry_count = 0
+
+    WHILE retry_count < max_retries:
+      content = Read("{sprint_artifacts}/sprint-status.yaml")
+      SEARCH for line matching "  epic-{epic_num}: " and extract current_status
+
+      IF current_status == "done":
+        Output: "✅ Epic status already shows 'done'"
+        BREAK
+
+      Edit(
+        file_path="{sprint_artifacts}/sprint-status.yaml",
+        old_string="  epic-{epic_num}: {current_status}",
+        new_string="  epic-{epic_num}: done"
+      )
+
+      updated = Read("{sprint_artifacts}/sprint-status.yaml")
+      IF updated contains "  epic-{epic_num}: done":
+        Output: "✅ Epic status updated successfully"
+        BREAK
+      ELSE:
+        retry_count += 1
+    END WHILE
+
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ EPIC {epic_num} COMPLETE!"
+    Output: "════════════════════════════════════════════════════════"
+    Exit 0
+  END IF
+
+ELSE:
+  # STORY-LEVEL MODE: Original behavior (complete entire story with all 8 phases)
+  Output: "📋 Story-level mode active - executing complete 8-phase TDD/ATDD workflow per story..."
+END IF
+```
 
 For each pending story:
 
@@ -1171,32 +1854,93 @@ PROCEED TO PHASE 5
 
 ## STEP 6: Story Completion - MANDATORY STATUS UPDATES
 
-**CRITICAL: The orchestrator MUST update status after successful quality gate.**
+**CRITICAL: Execute these steps DIRECTLY using Edit tool (this is the exception to "no Edit" rule).**
 
 After quality gate passes (PASS or WAIVED):
 
 ### 6.1 Update sprint-status.yaml
 
-Using Edit tool:
-1. Read the full sprint-status.yaml file
-2. Find the line containing `{story_key}:` in development_status section
-3. Change the status value to `done`
-4. Save the file preserving all comments and structure
+```
+max_retries = 3
+retry_count = 0
+
+WHILE retry_count < max_retries:
+
+  # 1. Read current file to get ACTUAL content
+  content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+  # 2. Find current status - look for "  {story_key}: <status>"
+  SEARCH for line matching "  {story_key}: " and extract current_status
+
+  IF current_status == "done":
+    Output: "✅ sprint-status.yaml already shows 'done'"
+    BREAK
+
+  # 3. Edit with EXACT strings (preserve 2-space indent)
+  Edit(
+    file_path="{sprint_artifacts}/sprint-status.yaml",
+    old_string="  {story_key}: {current_status}",
+    new_string="  {story_key}: done"
+  )
+
+  # 4. Verify by re-reading
+  updated = Read("{sprint_artifacts}/sprint-status.yaml")
+  IF updated contains "  {story_key}: done":
+    Output: "✅ sprint-status.yaml updated successfully"
+    BREAK
+  ELSE:
+    retry_count += 1
+    Output: "⚠️ Verification failed, retry {retry_count}/{max_retries}"
+
+END WHILE
+
+IF retry_count >= max_retries:
+  Output: "❌ FAILED to update sprint-status.yaml after 3 retries"
+  HALT with "Manual intervention required for status update"
+```
 
 ### 6.2 Update story file Status
 
-Using Edit tool:
-1. Read the story file at `{sprint_artifacts}/stories/{story_key}.md`
-2. Find the `Status:` field (usually near the top)
-3. Change to `Status: done`
-4. Save the file
+```
+max_retries = 3
+retry_count = 0
 
-### 6.3 Verify updates
+WHILE retry_count < max_retries:
 
-1. Re-read sprint-status.yaml and confirm `{story_key}: done`
-2. If verification fails, retry the edit
+  # 1. Read story file
+  content = Read("{sprint_artifacts}/stories/{story_key}.md")
 
-### 6.4 Clear session state
+  # 2. Find current Status line (e.g., "Status: in_progress")
+  SEARCH for line starting with "Status: " and extract current_status
+
+  IF current_status == "done":
+    Output: "✅ Story file already shows 'done'"
+    BREAK
+
+  # 3. Edit with EXACT strings
+  Edit(
+    file_path="{sprint_artifacts}/stories/{story_key}.md",
+    old_string="Status: {current_status}",
+    new_string="Status: done"
+  )
+
+  # 4. Verify by re-reading
+  updated = Read("{sprint_artifacts}/stories/{story_key}.md")
+  IF updated contains "Status: done":
+    Output: "✅ Story file status updated successfully"
+    BREAK
+  ELSE:
+    retry_count += 1
+    Output: "⚠️ Verification failed, retry {retry_count}/{max_retries}"
+
+END WHILE
+
+IF retry_count >= max_retries:
+  Output: "❌ FAILED to update story file status after 3 retries"
+  HALT with "Manual intervention required for status update"
+```
+
+### 6.3 Clear session state
 
 Clear epic_dev_session (or update for next story)
 
@@ -1231,28 +1975,77 @@ IF NOT --yolo AND more_stories_remaining:
 
 When all stories in the epic are done (no more pending stories):
 
-**CRITICAL: The orchestrator MUST mark the epic as done.**
+**CRITICAL: Execute these steps DIRECTLY using Edit tool.**
 
 ### 7.1 Update epic status in sprint-status.yaml
 
-Using Edit tool:
-1. Read the full sprint-status.yaml file
-2. Find the line containing `epic-{epic_num}:` in development_status section
-3. Change the status value to `done`
-4. Save the file preserving all comments and structure
+```
+max_retries = 3
+retry_count = 0
 
-### 7.2 Update epic retrospective status
+WHILE retry_count < max_retries:
 
-Using Edit tool:
-1. Find the line containing `epic-{epic_num}-retrospective:`
-2. If status is `optional` or `backlog`, change to `pending`
-3. This signals that retrospective should be run
+  # 1. Read current file
+  content = Read("{sprint_artifacts}/sprint-status.yaml")
 
-### 7.3 Verify epic completion
+  # 2. Find current epic status - look for "  epic-{epic_num}: <status>"
+  SEARCH for line matching "  epic-{epic_num}: " and extract current_status
 
-1. Re-read sprint-status.yaml
-2. Confirm `epic-{epic_num}: done`
-3. Confirm all `{epic_num}-*` stories show `done`
+  IF current_status == "done":
+    Output: "✅ Epic status already shows 'done'"
+    BREAK
+
+  # 3. Edit with EXACT strings
+  Edit(
+    file_path="{sprint_artifacts}/sprint-status.yaml",
+    old_string="  epic-{epic_num}: {current_status}",
+    new_string="  epic-{epic_num}: done"
+  )
+
+  # 4. Verify
+  updated = Read("{sprint_artifacts}/sprint-status.yaml")
+  IF updated contains "  epic-{epic_num}: done":
+    Output: "✅ Epic status updated successfully"
+    BREAK
+  ELSE:
+    retry_count += 1
+    Output: "⚠️ Verification failed, retry {retry_count}/{max_retries}"
+
+END WHILE
+```
+
+### 7.2 Update epic retrospective status (if exists)
+
+```
+# Look for retrospective entry
+content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+IF content contains "epic-{epic_num}-retrospective:":
+  SEARCH for "  epic-{epic_num}-retrospective: " and extract current_status
+
+  IF current_status in ["optional", "backlog"]:
+    Edit(
+      file_path="{sprint_artifacts}/sprint-status.yaml",
+      old_string="  epic-{epic_num}-retrospective: {current_status}",
+      new_string="  epic-{epic_num}-retrospective: pending"
+    )
+    Output: "✅ Retrospective status set to 'pending'"
+```
+
+### 7.3 Verify all story statuses
+
+```
+content = Read("{sprint_artifacts}/sprint-status.yaml")
+
+# Count stories for this epic that are NOT done
+SEARCH for all lines matching "  {epic_num}-*: "
+FOR each match:
+  IF status != "done":
+    Output: "⚠️ Story {key} is still '{status}' - epic cannot be complete"
+    HALT
+
+Output: "✅ All {count} stories verified as 'done'"
+```
 
 ```
 Output:

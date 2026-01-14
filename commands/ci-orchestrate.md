@@ -225,6 +225,10 @@ IF "$ARGUMENTS" contains "--loop":
   # --fix-single-category flag enables category-level granularity (one category per iteration)
   inner_command = "/ci_orchestrate {inner_flags} --fix-single-category"
 
+  # Add --force-model if strategic mode (uses opus for research)
+  IF "{inner_flags}" contains "--strategic":
+    inner_command = "{inner_command} --force-model"
+
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
 
@@ -236,9 +240,47 @@ IF "$ARGUMENTS" contains "--loop":
     Output: ""
 
     # Spawn fresh Claude instance with clean context
+    # Timeout protection: Conditional (10min tactical / 20min strategic)
     ```bash
-    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
-    EXIT_CODE=$?
+    ITERATION_START=$SECONDS
+
+    # Conditional timeout based on mode
+    if [[ "{inner_flags}" =~ "--strategic" ]]; then
+      TIMEOUT_MINUTES=20  # Strategic mode (opus research takes longer)
+    else
+      TIMEOUT_MINUTES=10  # Tactical mode (faster fixes)
+    fi
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    LOG_FILE="/tmp/ralph-loop-ci-orchestrate-iter-${iteration}.log"
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    EXIT_CODE=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat "$LOG_FILE")
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f "$LOG_FILE"
     ```
 
     # Check for completion signals (all CI checks passing)
@@ -469,6 +511,27 @@ IF "--fix-single-category" in "$ARGUMENTS":
 
   Output: "📋 Category-level mode active - fixing ONE failure category..."
 
+  # DEFENSIVE: Initialize state file for recovery
+  BRANCH=$(git branch --show-current)
+  STATE_FILE=".claude/state/ci-orchestration-${BRANCH}.json"
+  mkdir -p .claude/state
+
+  IF NOT exists "{STATE_FILE}":
+    Write state file:
+    {
+      "schema_version": "1.0",
+      "branch": "{BRANCH}",
+      "current_category": null,
+      "categories_completed": [],
+      "categories_remaining": ["linting", "types", "tests", "security", "import"],
+      "mode": "tactical",
+      "iteration": 0,
+      "last_updated": "{timestamp}"
+    }
+
+  # Load existing state
+  STATE = Read("{STATE_FILE}")
+
   # Analyze CI failures and group by category
   ```bash
   # Get CI failure output
@@ -485,6 +548,13 @@ IF "--fix-single-category" in "$ARGUMENTS":
   # Execute ONLY the first detected category (priority order)
   IF HAS_LINTING > 0:
     Output: "=== [CATEGORY: LINTING] Fixing linting/formatting failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call (protects against hangs)
+    Update STATE:
+      - current_category: "linting"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="linting-fixer",
@@ -507,12 +577,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - categories_completed: [...STATE.categories_completed, "linting"]
+      - categories_remaining: [filter "linting" from STATE.categories_remaining]
+      - current_category: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ CATEGORY_COMPLETE: LINTING"
     Output: "   Next category: types (if any)"
     Exit 0
 
   ELIF HAS_IMPORT > 0:
     Output: "=== [CATEGORY: IMPORTS] Fixing import/module failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_category: "import"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="import-error-fixer",
@@ -535,12 +620,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - categories_completed: [...STATE.categories_completed, "import"]
+      - categories_remaining: [filter "import" from STATE.categories_remaining]
+      - current_category: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ CATEGORY_COMPLETE: IMPORTS"
     Output: "   Next category: types (if any)"
     Exit 0
 
   ELIF HAS_TYPES > 0:
     Output: "=== [CATEGORY: TYPES] Fixing type checking failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_category: "types"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="type-error-fixer",
@@ -562,6 +662,14 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
   'summary': 'Brief description'
 }"
     )
+
+    # Update state after successful completion
+    Update STATE:
+      - categories_completed: [...STATE.categories_completed, "types"]
+      - categories_remaining: [filter "types" from STATE.categories_remaining]
+      - current_category: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Output: "✅ CATEGORY_COMPLETE: TYPES"
     Output: "   Next category: tests (if any)"
@@ -585,6 +693,13 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
       test_fixer = "unit-test-fixer"
     END IF
 
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_category: "tests"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Task(
       subagent_type="{test_fixer}",
       model="sonnet",
@@ -606,12 +721,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - categories_completed: [...STATE.categories_completed, "tests"]
+      - categories_remaining: [filter "tests" from STATE.categories_remaining]
+      - current_category: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ CATEGORY_COMPLETE: TESTS"
     Output: "   Next category: security (if any)"
     Exit 0
 
   ELIF HAS_SECURITY > 0:
     Output: "=== [CATEGORY: SECURITY] Fixing security failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_category: "security"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="security-scanner",
@@ -634,7 +764,16 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - categories_completed: [...STATE.categories_completed, "security"]
+      - categories_remaining: [filter "security" from STATE.categories_remaining]
+      - current_category: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ CATEGORY_COMPLETE: SECURITY"
+    Output: "   State file: {STATE_FILE}"
     Exit 0
 
   ELSE:

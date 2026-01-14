@@ -1,6 +1,6 @@
 ---
 description: "Automate BMAD development cycle for stories in an epic"
-argument-hint: "<epic-number> [--yolo] [--loop N] [--loop-delay S]"
+argument-hint: "<epic-number> [--yolo] [--force-model] [--loop N] [--loop-delay S]"
 ---
 
 # BMAD Epic Development
@@ -14,11 +14,12 @@ Execute development cycle for epic: "$ARGUMENTS"
 Parse "$ARGUMENTS":
 - **epic_number** (required): First positional argument (e.g., "2")
 - **--yolo**: Skip confirmation prompts between stories
+- **--force-model**: Skip model selection confirmation prompts (enables unattended automation)
 - **--loop N**: Enable Ralph loop mode with max N iterations (default: 10)
 - **--loop-delay S**: Seconds to wait between iterations (default: 5)
 
 Validation:
-- If no epic_number: Error "Usage: /epic-dev <epic-number> [--yolo] [--loop N]"
+- If no epic_number: Error "Usage: /epic-dev <epic-number> [--yolo] [--force-model] [--loop N]"
 
 ---
 
@@ -46,7 +47,8 @@ IF "$ARGUMENTS" contains "--loop":
 
   # Build inner command (without --loop to avoid infinite recursion)
   # --phase-single flag enables phase-level granularity (one phase per iteration)
-  inner_command = "/epic-dev {epic_num} --yolo --phase-single"
+  # --force-model flag bypasses model confirmation prompts (inherited from parent)
+  inner_command = "/epic-dev {epic_num} --yolo --phase-single --force-model"
 
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
@@ -59,9 +61,41 @@ IF "$ARGUMENTS" contains "--loop":
     Output: ""
 
     # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 15 minutes
     ```bash
-    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
-    EXIT_CODE=$?
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=15
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    LOG_FILE="/tmp/ralph-loop-epic-dev-iter-${iteration}.log"
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    EXIT_CODE=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat "$LOG_FILE")
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f "$LOG_FILE"
     ```
 
     # Check for epic completion signals

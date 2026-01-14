@@ -1,6 +1,6 @@
 ---
 description: "Analyze and fix code quality issues - file sizes, function lengths, complexity"
-argument-hint: "[--check] [--fix] [--dry-run] [--refresh-exceptions] [--focus=file-size|function-length|complexity] [--path=...] [--max-parallel=N] [--no-chain] [--continue]"
+argument-hint: "[--check] [--fix] [--dry-run] [--refresh-exceptions] [--focus=file-size|function-length|complexity] [--path=...] [--max-parallel=N] [--no-chain] [--continue] [--loop N] [--loop-delay S] [--fix-single-rule]"
 allowed-tools: ["Task", "Bash", "Grep", "Read", "Glob", "TodoWrite", "SlashCommand", "AskUserQuestion"]
 ---
 
@@ -34,6 +34,9 @@ Parse flags from "$ARGUMENTS":
   Use when you want guaranteed reliability at the cost of speed
 - `--no-ralph`: Disable auto-Ralph fallback on hallucination detection
   ⚠️ WARNING: Without Ralph fallback, hallucinated files will be marked as failed (no retry)
+- `--loop N`: Enable fresh-context loop mode (spawns new Claude instances for unattended execution)
+  Max N iterations with completely fresh 200K context per iteration
+- `--loop-delay S`: Seconds to wait between loop iterations (default: 5)
 
 If no arguments provided, default to `--check` (analysis only).
 
@@ -69,6 +72,384 @@ Exit after refresh (no other steps executed).
 
 ---
 
+## STEP 1.25: Ralph Loop Mode Detection (Fresh Context)
+
+**If `--loop` is present in arguments, execute fresh-context loop instead of normal flow.**
+
+This is different from `--ralph` (which is within-context self-correction). The `--loop` flag spawns
+completely NEW Claude instances per iteration for unattended/overnight execution.
+
+```
+IF "$ARGUMENTS" contains "--loop":
+
+  # Extract loop parameters
+  loop_max = extract_number_after("--loop", default=10)
+  loop_delay = extract_number_after("--loop-delay", default=5)
+
+  # Determine inner command flags (preserve all except --loop)
+  inner_flags = "$ARGUMENTS" without "--loop" and "--loop-delay"
+  IF NOT contains "--fix":
+    inner_flags += " --fix"  # Loop mode implies --fix
+
+  Output: "════════════════════════════════════════════════════════"
+  Output: "🔄 RALPH LOOP MODE ACTIVATED (Code Quality)"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Max iterations: {loop_max}"
+  Output: "  Delay between iterations: {loop_delay}s"
+  Output: "  Fresh context per iteration: YES"
+  Output: "  Mode: Unattended (--fix implied)"
+  Output: "  Inner flags: {inner_flags}"
+  Output: "════════════════════════════════════════════════════════"
+  Output: ""
+
+  # Build inner command (without --loop to avoid infinite recursion)
+  # --fix-single-rule flag enables rule-level granularity (one rule per iteration)
+  inner_command = "/code_quality {inner_flags} --fix-single-rule"
+
+  # Execute Ralph loop
+  FOR iteration IN 1..loop_max:
+
+    Output: ""
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "═══ RALPH ITERATION {iteration}/{loop_max} ═══"
+    Output: "═══════════════════════════════════════════════════════════"
+    Output: "Starting fresh Claude instance..."
+    Output: ""
+
+    # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 15 minutes
+    ```bash
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=15
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    LOG_FILE="/tmp/ralph-loop-code-quality-iter-${iteration}.log"
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    EXIT_CODE=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat "$LOG_FILE")
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f "$LOG_FILE"
+    ```
+
+    # Check for completion signals
+    IF OUTPUT matches regex "All.*violations.*fixed|0 violations remaining|Code Quality.*PASS|Status.*PASS":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "✅ RALPH LOOP SUCCESS"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  All code quality violations fixed at iteration {iteration}!"
+      Output: "  Total iterations used: {iteration}/{loop_max}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 0
+
+    # Check for blocking signals that require human intervention
+    IF OUTPUT matches regex "HALT|BLOCKED|Cannot proceed|Manual intervention|user chose.*abort":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⚠️ RALPH LOOP BLOCKED"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Blocked at iteration {iteration}"
+      Output: "  Reason: Manual intervention required"
+      Output: "  Action: Review output above and resolve issue"
+      Output: "  Resume: /code_quality --loop {remaining_iterations} {inner_flags}"
+      Output: "════════════════════════════════════════════════════════"
+      EXIT 1
+
+    # Check for "Stop here" signal (user stopped but progress saved)
+    IF OUTPUT matches regex "Stop here|state.*saved|--continue to resume":
+      Output: ""
+      Output: "════════════════════════════════════════════════════════"
+      Output: "⏸️ RALPH LOOP PAUSED (State Saved)"
+      Output: "════════════════════════════════════════════════════════"
+      Output: "  Progress saved at iteration {iteration}"
+      Output: "  Continuing in next iteration with --continue flag..."
+      Output: "════════════════════════════════════════════════════════"
+      # Update inner_command to include --continue for subsequent iterations
+      inner_command = "/code_quality --continue {inner_flags}"
+
+    # Check for non-zero exit (crash or error)
+    IF EXIT_CODE != 0:
+      Output: "⚠️ Iteration {iteration} exited with code {EXIT_CODE}"
+      Output: "   Continuing to next iteration (may be transient)..."
+
+    # Delay before next iteration
+    IF iteration < loop_max:
+      Output: ""
+      Output: "Sleeping {loop_delay}s before next iteration..."
+      sleep {loop_delay}
+
+  END FOR
+
+  # Max iterations reached without completion
+  Output: ""
+  Output: "════════════════════════════════════════════════════════"
+  Output: "⚠️ RALPH LOOP INCOMPLETE"
+  Output: "════════════════════════════════════════════════════════"
+  Output: "  Reached max iterations ({loop_max}) without completion"
+  Output: "  Violations may remain"
+  Output: "  Action: Check remaining violations with /code_quality --check"
+  Output: "  Resume: /code_quality --loop {loop_max}"
+  Output: "════════════════════════════════════════════════════════"
+  EXIT 1
+
+ELSE:
+  # Normal execution - continue to STEP 1.5
+  PROCEED TO STEP 1.5
+END IF
+```
+
+---
+
+## STEP 1.26: Rule-Level Mode Detection (Phase Granularity)
+
+**If `--fix-single-rule` is present, execute only ONE category of quality violations per iteration.**
+
+This provides phase-level granularity for Ralph loops, resulting in:
+- 20-35K tokens per iteration (vs 60-100K for all categories)
+- Fresh context per rule category (prevents tunnel vision)
+- Better recovery from failures
+
+```
+IF "--fix-single-rule" in "$ARGUMENTS":
+  # RULE-LEVEL MODE: Execute ONLY the next category of violations
+
+  Output: "📋 Rule-level mode active - fixing ONE quality category..."
+
+  # Run quality checks and detect violation categories
+  ```bash
+  echo "=== Analyzing Quality Violations ==="
+
+  # Check for file size violations
+  FILE_SIZE_OUT=""
+  if [ -f ~/.claude/scripts/quality/check_file_sizes.py ]; then
+      if command -v uv &> /dev/null; then
+          FILE_SIZE_OUT=$(uv run python ~/.claude/scripts/quality/check_file_sizes.py --project "$PWD" 2>&1 || true)
+      else
+          FILE_SIZE_OUT=$(python3 ~/.claude/scripts/quality/check_file_sizes.py --project "$PWD" 2>&1 || true)
+      fi
+  fi
+  HAS_FILE_SIZE=$(echo "$FILE_SIZE_OUT" | grep -cE "BLOCKING|violation" || echo "0")
+
+  # Check for function length violations
+  FUNC_LEN_OUT=""
+  if [ -f ~/.claude/scripts/quality/check_function_lengths.py ]; then
+      FUNC_LEN_OUT=$(python3 ~/.claude/scripts/quality/check_function_lengths.py --project "$PWD" 2>&1 || true)
+  fi
+  HAS_FUNC_LEN=$(echo "$FUNC_LEN_OUT" | grep -cE "BLOCKING|violation|>100 lines" || echo "0")
+
+  # Check for complexity violations (if available)
+  HAS_COMPLEXITY=0
+  if [ -f ~/.claude/scripts/quality/check_complexity.py ]; then
+      COMPLEX_OUT=$(python3 ~/.claude/scripts/quality/check_complexity.py --project "$PWD" 2>&1 || true)
+      HAS_COMPLEXITY=$(echo "$COMPLEX_OUT" | grep -cE "complexity|violation" || echo "0")
+  fi
+  ```
+
+  # Execute ONLY the first detected category (priority order: complexity → function-length → file-size)
+  IF HAS_COMPLEXITY > 0:
+    Output: "=== [RULE: COMPLEXITY] Fixing high-complexity functions ==="
+
+    # DEFENSIVE: Update ralph_state BEFORE Task call (protects against hangs)
+    Update batch state:
+      - ralph_state.current_rule: "complexity"
+      - ralph_state.rule_iteration: {STATE.ralph_state.rule_iteration + 1}
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
+    Task(
+      subagent_type="code-quality-analyzer",
+      model="sonnet",
+      description="Fix complexity violations",
+      prompt="Fix high-complexity functions in the codebase.
+
+Quality check output:
+{COMPLEX_OUT | head -50}
+
+Target: Cyclomatic complexity < 12 per function
+
+Split complex functions, extract helper methods, simplify conditional logic.
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'remaining_issues': N,
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update ralph_state after successful completion
+    Update batch state:
+      - ralph_state.rules_completed: [...STATE.ralph_state.rules_completed, "complexity"]
+      - ralph_state.rules_remaining: [filter "complexity" from STATE.ralph_state.rules_remaining]
+      - ralph_state.current_rule: null
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
+    Output: "✅ RULE_COMPLETE: COMPLEXITY"
+    Output: "   Next rule: function-length (if any)"
+    Exit 0
+
+  ELIF HAS_FUNC_LEN > 0:
+    Output: "=== [RULE: FUNCTION-LENGTH] Fixing long functions ==="
+
+    # Get list of files with function length violations
+    VIOLATION_FILES=$(echo "$FUNC_LEN_OUT" | grep -E "BLOCKING|>100 lines" | grep -oE "[a-zA-Z0-9_/]+\.py" | sort -u | head -3)
+
+    # DEFENSIVE: Update ralph_state BEFORE Task call
+    Update batch state:
+      - ralph_state.current_rule: "function-length"
+      - ralph_state.rule_iteration: {STATE.ralph_state.rule_iteration + 1}
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
+    Task(
+      subagent_type="safe-refactor",
+      model="sonnet",
+      description="Fix function length violations",
+      prompt="Refactor long functions in these files:
+
+Files with violations:
+$VIOLATION_FILES
+
+Quality check output:
+{FUNC_LEN_OUT | head -50}
+
+Target: Functions < 100 lines
+
+Use TEST-SAFE workflow:
+1. Run existing tests, establish GREEN baseline
+2. Split long functions using facade pattern
+3. Verify tests pass after each change
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'remaining_issues': N,
+  'new_structure': {
+    'longest_function_lines': N,
+    'target_threshold': 100,
+    'meets_threshold': true|false
+  },
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update ralph_state after successful completion
+    Update batch state:
+      - ralph_state.rules_completed: [...STATE.ralph_state.rules_completed, "function-length"]
+      - ralph_state.rules_remaining: [filter "function-length" from STATE.ralph_state.rules_remaining]
+      - ralph_state.current_rule: null
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
+    Output: "✅ RULE_COMPLETE: FUNCTION-LENGTH"
+    Output: "   Next rule: file-size (if any)"
+    Exit 0
+
+  ELIF HAS_FILE_SIZE > 0:
+    Output: "=== [RULE: FILE-SIZE] Fixing oversized files ==="
+
+    # Get list of files with file size violations
+    VIOLATION_FILES=$(echo "$FILE_SIZE_OUT" | grep -E "BLOCKING" | grep -oE "[a-zA-Z0-9_/]+\.py" | sort -u | head -3)
+
+    # DEFENSIVE: Update ralph_state BEFORE Task call
+    Update batch state:
+      - ralph_state.current_rule: "file-size"
+      - ralph_state.rule_iteration: {STATE.ralph_state.rule_iteration + 1}
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
+    Task(
+      subagent_type="safe-refactor",
+      model="sonnet",
+      description="Fix file size violations",
+      prompt="Refactor oversized files:
+
+Files with violations:
+$VIOLATION_FILES
+
+Quality check output:
+{FILE_SIZE_OUT | head -50}
+
+Target: Production files < 500 LOC, Test files < 800 LOC
+
+Use TEST-SAFE workflow:
+1. Run existing tests, establish GREEN baseline
+2. Extract modules using facade pattern
+3. Verify tests pass after each change
+
+MANDATORY OUTPUT FORMAT - Return ONLY JSON:
+{
+  'status': 'fixed|partial|failed',
+  'issues_fixed': N,
+  'files_modified': ['...'],
+  'remaining_issues': N,
+  'new_structure': {
+    'largest_file_loc': N,
+    'target_threshold': 500,
+    'meets_threshold': true|false
+  },
+  'summary': 'Brief description'
+}"
+    )
+
+    # Update ralph_state after successful completion
+    Update batch state:
+      - ralph_state.rules_completed: [...STATE.ralph_state.rules_completed, "file-size"]
+      - ralph_state.rules_remaining: [filter "file-size" from STATE.ralph_state.rules_remaining]
+      - ralph_state.current_rule: null
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
+    Output: "✅ RULE_COMPLETE: FILE-SIZE"
+    Exit 0
+
+  ELSE:
+    # No violations detected or all categories fixed
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ ALL QUALITY CHECKS PASSING"
+    Output: "════════════════════════════════════════════════════════"
+    Output: "   All quality rule categories have been addressed."
+    Output: "   Codebase meets quality thresholds."
+    Exit 0
+  END IF
+
+ELSE:
+  # ALL-RULES MODE: Original behavior (fix all categories with smart batching)
+  Output: "📋 All-rules mode active - fixing all quality violations..."
+  PROCEED TO STEP 1.5
+END IF
+```
+
+---
+
 ## STEP 1.5: Load Batch State (if --continue)
 
 If `--continue` flag provided:
@@ -82,17 +463,17 @@ if [ ! -f .claude/state/code-quality-batch.json ]; then
     # EXIT - cannot continue without state
 fi
 
-# Check schema version (v2.0 required)
+# Check schema version (v2.0 or v2.1 required)
 SCHEMA=$(cat .claude/state/code-quality-batch.json | python3 -c "import json,sys; print(json.load(sys.stdin).get('schema_version','1.0'))" 2>/dev/null || echo "1.0")
-if [ "$SCHEMA" != "2.0" ]; then
+if [ "$SCHEMA" != "2.0" ] && [ "$SCHEMA" != "2.1" ]; then
     echo "ERROR: State file uses incompatible schema version ($SCHEMA)"
-    echo "State v2.0 required. Delete old state and run fresh analysis:"
+    echo "State v2.0/v2.1 required. Delete old state and run fresh analysis:"
     echo "  rm .claude/state/code-quality-batch.json"
     echo "  /code_quality --fix"
     # EXIT - cannot continue with old schema
 fi
 
-echo "✓ Valid v2.0 state file found"
+echo "✓ Valid v${SCHEMA} state file found"
 cat .claude/state/code-quality-batch.json
 ```
 
@@ -483,7 +864,7 @@ Then write a JSON file with this EXACT structure (substitute actual values):
 
 ```json
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "session_id": "{unix_timestamp}",
   "created_at": "{ISO8601_datetime}",
   "updated_at": "{ISO8601_datetime}",
@@ -493,6 +874,13 @@ Then write a JSON file with this EXACT structure (substitute actual values):
     "total_violations": {count},
     "file_size_violations": {count},
     "function_length_violations": {count}
+  },
+
+  "ralph_state": {
+    "current_rule": "complexity|function-length|file-size|null",
+    "rule_iteration": 0,
+    "rules_completed": [],
+    "rules_remaining": ["complexity", "function-length", "file-size"]
   },
 
   "execution_plan": {
@@ -536,7 +924,7 @@ Then write a JSON file with this EXACT structure (substitute actual values):
 
 | Field | Source | Required |
 |-------|--------|----------|
-| `schema_version` | Always "2.0" | ✅ |
+| `schema_version` | "2.0" or "2.1" (v2.1 adds ralph_state tracking) | ✅ |
 | `execution_plan.batches` | From PHASE 2 cluster analysis | ✅ |
 | `execution_plan.batches[].mode` | "serial" if shared_tests, else "parallel" | ✅ |
 | `execution_plan.batches[].status` | Track as batches complete | ✅ |

@@ -126,9 +126,41 @@ IF "$ARGUMENTS" contains "--loop":
     Output: ""
 
     # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 12 minutes
     ```bash
-    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
-    EXIT_CODE=$?
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=12
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    LOG_FILE="/tmp/ralph-loop-test-orchestrate-iter-${iteration}.log"
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    EXIT_CODE=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat "$LOG_FILE")
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f "$LOG_FILE"
     ```
 
     # Check for completion signals (all tests passing)
@@ -214,6 +246,24 @@ IF "--fix-single-type" in "$ARGUMENTS":
 
   Output: "📋 Type-level mode active - fixing ONE test type..."
 
+  # DEFENSIVE: Initialize state file for recovery
+  STATE_FILE=".claude/state/test-orchestration.json"
+  mkdir -p .claude/state
+
+  IF NOT exists "{STATE_FILE}":
+    Write state file:
+    {
+      "schema_version": "1.0",
+      "current_type": null,
+      "types_completed": [],
+      "types_remaining": ["import", "type", "unit", "api", "database", "e2e"],
+      "iteration": 0,
+      "last_updated": "{timestamp}"
+    }
+
+  # Load existing state
+  STATE = Read("{STATE_FILE}")
+
   # Run tests and analyze failures by type
   ```bash
   cd apps/api && TEST_OUTPUT=$(uv run pytest -v --tb=short 2>&1 || true)
@@ -231,6 +281,13 @@ IF "--fix-single-type" in "$ARGUMENTS":
   # Execute ONLY the first detected type (priority order: foundational → complex)
   IF HAS_IMPORT > 0:
     Output: "=== [TYPE: IMPORTS] Fixing import/module failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call (protects against hangs)
+    Update STATE:
+      - current_type: "import"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="import-error-fixer",
@@ -253,12 +310,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "import"]
+      - types_remaining: [filter "import" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ TYPE_COMPLETE: IMPORTS"
     Output: "   Next type: types (if any)"
     Exit 0
 
   ELIF HAS_TYPE > 0:
     Output: "=== [TYPE: TYPES] Fixing type-related failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "type"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="type-error-fixer",
@@ -281,12 +353,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "type"]
+      - types_remaining: [filter "type" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ TYPE_COMPLETE: TYPES"
     Output: "   Next type: unit (if any)"
     Exit 0
 
   ELIF HAS_UNIT > 0:
     Output: "=== [TYPE: UNIT] Fixing unit test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "unit"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="unit-test-fixer",
@@ -309,12 +396,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "unit"]
+      - types_remaining: [filter "unit" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ TYPE_COMPLETE: UNIT"
     Output: "   Next type: api (if any)"
     Exit 0
 
   ELIF HAS_API > 0:
     Output: "=== [TYPE: API] Fixing API test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "api"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="api-test-fixer",
@@ -337,12 +439,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "api"]
+      - types_remaining: [filter "api" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ TYPE_COMPLETE: API"
     Output: "   Next type: database (if any)"
     Exit 0
 
   ELIF HAS_DB > 0:
     Output: "=== [TYPE: DATABASE] Fixing database test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "database"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="database-test-fixer",
@@ -365,12 +482,27 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "database"]
+      - types_remaining: [filter "database" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ TYPE_COMPLETE: DATABASE"
     Output: "   Next type: e2e (if any)"
     Exit 0
 
   ELIF HAS_E2E > 0:
     Output: "=== [TYPE: E2E] Fixing E2E test failures ==="
+
+    # DEFENSIVE: Update state BEFORE Task call
+    Update STATE:
+      - current_type: "e2e"
+      - iteration: {STATE.iteration + 1}
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
 
     Task(
       subagent_type="e2e-test-fixer",
@@ -393,7 +525,16 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update state after successful completion
+    Update STATE:
+      - types_completed: [...STATE.types_completed, "e2e"]
+      - types_remaining: [filter "e2e" from STATE.types_remaining]
+      - current_type: null
+      - last_updated: {timestamp}
+    Write "{STATE_FILE}"
+
     Output: "✅ TYPE_COMPLETE: E2E"
+    Output: "   State file: {STATE_FILE}"
     Exit 0
 
   ELSE:

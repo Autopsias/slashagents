@@ -117,9 +117,41 @@ IF "$ARGUMENTS" contains "--loop":
     Output: ""
 
     # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 15 minutes
     ```bash
-    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
-    EXIT_CODE=$?
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=15
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    LOG_FILE="/tmp/ralph-loop-code-quality-iter-${iteration}.log"
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    EXIT_CODE=0
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat "$LOG_FILE")
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f "$LOG_FILE"
     ```
 
     # Check for completion signals
@@ -240,6 +272,13 @@ IF "--fix-single-rule" in "$ARGUMENTS":
   IF HAS_COMPLEXITY > 0:
     Output: "=== [RULE: COMPLEXITY] Fixing high-complexity functions ==="
 
+    # DEFENSIVE: Update ralph_state BEFORE Task call (protects against hangs)
+    Update batch state:
+      - ralph_state.current_rule: "complexity"
+      - ralph_state.rule_iteration: {STATE.ralph_state.rule_iteration + 1}
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
     Task(
       subagent_type="code-quality-analyzer",
       model="sonnet",
@@ -263,6 +302,14 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update ralph_state after successful completion
+    Update batch state:
+      - ralph_state.rules_completed: [...STATE.ralph_state.rules_completed, "complexity"]
+      - ralph_state.rules_remaining: [filter "complexity" from STATE.ralph_state.rules_remaining]
+      - ralph_state.current_rule: null
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
     Output: "✅ RULE_COMPLETE: COMPLEXITY"
     Output: "   Next rule: function-length (if any)"
     Exit 0
@@ -272,6 +319,13 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 
     # Get list of files with function length violations
     VIOLATION_FILES=$(echo "$FUNC_LEN_OUT" | grep -E "BLOCKING|>100 lines" | grep -oE "[a-zA-Z0-9_/]+\.py" | sort -u | head -3)
+
+    # DEFENSIVE: Update ralph_state BEFORE Task call
+    Update batch state:
+      - ralph_state.current_rule: "function-length"
+      - ralph_state.rule_iteration: {STATE.ralph_state.rule_iteration + 1}
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
 
     Task(
       subagent_type="safe-refactor",
@@ -307,6 +361,14 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 }"
     )
 
+    # Update ralph_state after successful completion
+    Update batch state:
+      - ralph_state.rules_completed: [...STATE.ralph_state.rules_completed, "function-length"]
+      - ralph_state.rules_remaining: [filter "function-length" from STATE.ralph_state.rules_remaining]
+      - ralph_state.current_rule: null
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
+
     Output: "✅ RULE_COMPLETE: FUNCTION-LENGTH"
     Output: "   Next rule: file-size (if any)"
     Exit 0
@@ -316,6 +378,13 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
 
     # Get list of files with file size violations
     VIOLATION_FILES=$(echo "$FILE_SIZE_OUT" | grep -E "BLOCKING" | grep -oE "[a-zA-Z0-9_/]+\.py" | sort -u | head -3)
+
+    # DEFENSIVE: Update ralph_state BEFORE Task call
+    Update batch state:
+      - ralph_state.current_rule: "file-size"
+      - ralph_state.rule_iteration: {STATE.ralph_state.rule_iteration + 1}
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
 
     Task(
       subagent_type="safe-refactor",
@@ -350,6 +419,14 @@ MANDATORY OUTPUT FORMAT - Return ONLY JSON:
   'summary': 'Brief description'
 }"
     )
+
+    # Update ralph_state after successful completion
+    Update batch state:
+      - ralph_state.rules_completed: [...STATE.ralph_state.rules_completed, "file-size"]
+      - ralph_state.rules_remaining: [filter "file-size" from STATE.ralph_state.rules_remaining]
+      - ralph_state.current_rule: null
+      - updated_at: {timestamp}
+    Write code-quality-batch-state.json
 
     Output: "✅ RULE_COMPLETE: FILE-SIZE"
     Exit 0
@@ -386,17 +463,17 @@ if [ ! -f .claude/state/code-quality-batch.json ]; then
     # EXIT - cannot continue without state
 fi
 
-# Check schema version (v2.0 required)
+# Check schema version (v2.0 or v2.1 required)
 SCHEMA=$(cat .claude/state/code-quality-batch.json | python3 -c "import json,sys; print(json.load(sys.stdin).get('schema_version','1.0'))" 2>/dev/null || echo "1.0")
-if [ "$SCHEMA" != "2.0" ]; then
+if [ "$SCHEMA" != "2.0" ] && [ "$SCHEMA" != "2.1" ]; then
     echo "ERROR: State file uses incompatible schema version ($SCHEMA)"
-    echo "State v2.0 required. Delete old state and run fresh analysis:"
+    echo "State v2.0/v2.1 required. Delete old state and run fresh analysis:"
     echo "  rm .claude/state/code-quality-batch.json"
     echo "  /code_quality --fix"
     # EXIT - cannot continue with old schema
 fi
 
-echo "✓ Valid v2.0 state file found"
+echo "✓ Valid v${SCHEMA} state file found"
 cat .claude/state/code-quality-batch.json
 ```
 
@@ -787,7 +864,7 @@ Then write a JSON file with this EXACT structure (substitute actual values):
 
 ```json
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "session_id": "{unix_timestamp}",
   "created_at": "{ISO8601_datetime}",
   "updated_at": "{ISO8601_datetime}",
@@ -797,6 +874,13 @@ Then write a JSON file with this EXACT structure (substitute actual values):
     "total_violations": {count},
     "file_size_violations": {count},
     "function_length_violations": {count}
+  },
+
+  "ralph_state": {
+    "current_rule": "complexity|function-length|file-size|null",
+    "rule_iteration": 0,
+    "rules_completed": [],
+    "rules_remaining": ["complexity", "function-length", "file-size"]
   },
 
   "execution_plan": {
@@ -840,7 +924,7 @@ Then write a JSON file with this EXACT structure (substitute actual values):
 
 | Field | Source | Required |
 |-------|--------|----------|
-| `schema_version` | Always "2.0" | ✅ |
+| `schema_version` | "2.0" or "2.1" (v2.1 adds ralph_state tracking) | ✅ |
 | `execution_plan.batches` | From PHASE 2 cluster analysis | ✅ |
 | `execution_plan.batches[].mode` | "serial" if shared_tests, else "parallel" | ✅ |
 | `execution_plan.batches[].status` | Track as batches complete | ✅ |

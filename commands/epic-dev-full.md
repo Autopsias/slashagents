@@ -66,10 +66,11 @@ Parse "$ARGUMENTS" to extract:
 - **epic_number** (required): First positional argument (e.g., "2" for Epic 2)
 - **--resume**: Continue from last incomplete story/phase
 - **--yolo**: Skip user confirmation pauses between stories
+- **--force-model**: Skip model selection confirmation prompts (enables unattended automation)
 
 **Validation:**
 - epic_number must be a positive integer
-- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S]"
+- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S] [--force-model]"
 
 ---
 
@@ -98,7 +99,8 @@ IF "$ARGUMENTS" contains "--loop":
 
   # Build inner command (without --loop to avoid infinite recursion)
   # --phase-single flag enables phase-level granularity (one phase per iteration)
-  inner_command = "/epic-dev-full {epic_num} --yolo --phase-single"
+  # --force-model flag bypasses model confirmation prompts (inherited from parent)
+  inner_command = "/epic-dev-full {epic_num} --yolo --phase-single --force-model"
 
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
@@ -111,9 +113,39 @@ IF "$ARGUMENTS" contains "--loop":
     Output: ""
 
     # Spawn fresh Claude instance with clean context
+    # Timeout protection: Kill if no progress after 20 minutes
     ```bash
-    OUTPUT=$(claude -p "{inner_command}" --dangerously-skip-permissions 2>&1 | tee /dev/stderr)
-    EXIT_CODE=$?
+    ITERATION_START=$SECONDS
+    TIMEOUT_MINUTES=20
+    TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+
+    # Start Claude in background
+    claude -p "{inner_command}" --dangerously-skip-permissions > /tmp/ralph-loop-${epic_num}-iter-${iteration}.log 2>&1 &
+    CLAUDE_PID=$!
+
+    # Monitor with timeout
+    while kill -0 $CLAUDE_PID 2>/dev/null; do
+      ELAPSED=$((SECONDS - ITERATION_START))
+      if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
+        echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
+        kill -9 $CLAUDE_PID 2>/dev/null
+        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
+        EXIT_CODE=124
+        break
+      fi
+      sleep 5
+    done
+
+    # Collect output if not timeout
+    if [ $EXIT_CODE -ne 124 ]; then
+      wait $CLAUDE_PID
+      EXIT_CODE=$?
+      OUTPUT=$(cat /tmp/ralph-loop-${epic_num}-iter-${iteration}.log)
+      echo "$OUTPUT" | tee /dev/stderr
+    fi
+
+    # Cleanup
+    rm -f /tmp/ralph-loop-${epic_num}-iter-${iteration}.log
     ```
 
     # Check for epic completion signals
@@ -324,6 +356,13 @@ IF "--phase-single" in "$ARGUMENTS":
   IF current_phase == "create_story":
     Output: "=== [Phase 1/8] Creating story: {current_story} (opus) ==="
 
+    # DEFENSIVE: Update session BEFORE Task call (protects against hangs)
+    Update session:
+      - phase: "create_story"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
     Task(
       subagent_type="epic-story-creator",
       model="opus",
@@ -339,7 +378,7 @@ Execute the BMAD create-story workflow.
 Return ONLY JSON: {story_path, ac_count, task_count, status}"
     )
 
-    # Update session to next phase
+    # Update session to next phase (after successful completion)
     Update session:
       - phase: "create_complete"
       - current_story: {current_story}
@@ -384,6 +423,14 @@ Return ONLY JSON: {pass_rate, total_issues, critical_issues}"
   ELIF current_phase == "validation_complete" OR current_phase == "testarch_atdd":
     Output: "=== [Phase 3/8] TDD RED Phase - Generating acceptance tests: {current_story} (opus) ==="
 
+    # DEFENSIVE: Update session BEFORE Task call
+    Update session:
+      - phase: "testarch_atdd"
+      - current_story: {current_story}
+      - tdd_phase: "red"
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
+
     Task(
       subagent_type="epic-atdd-writer",
       model="opus",
@@ -399,6 +446,7 @@ All tests MUST fail initially (RED state).
 Return ONLY JSON: {checklist_file, tests_created, test_files, acs_covered}"
     )
 
+    # Update session after successful completion
     Update session:
       - phase: "atdd_complete"
       - current_story: {current_story}
@@ -476,6 +524,13 @@ Return JSON: {fixes_applied, tests_passing}"
   # Phase 5: Code Review
   ELIF current_phase == "dev_complete" OR current_phase == "code_review":
     Output: "=== [Phase 5/8] Code Review: {current_story} (opus) ==="
+
+    # DEFENSIVE: Update session BEFORE Task call
+    Update session:
+      - phase: "code_review"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
 
     Task(
       subagent_type="epic-code-reviewer",
@@ -659,6 +714,13 @@ Return JSON: {fixes_applied, tests_passing}"
   # Phase 8: Requirements Traceability & Quality Gate
   ELIF current_phase == "test_review_complete" OR current_phase == "testarch_trace":
     Output: "=== [Phase 8/8] Quality Gate Decision: {current_story} (opus) ==="
+
+    # DEFENSIVE: Update session BEFORE Task call
+    Update session:
+      - phase: "testarch_trace"
+      - current_story: {current_story}
+      - last_updated: {timestamp}
+    Write sprint-status.yaml
 
     Task(
       subagent_type="epic-story-validator",

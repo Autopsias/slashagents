@@ -64,13 +64,14 @@ Execute the complete TDD/ATDD-driven BMAD development cycle for epic: "$ARGUMENT
 
 Parse "$ARGUMENTS" to extract:
 - **epic_number** (required): First positional argument (e.g., "2" for Epic 2)
+- **--interactive**: Run in current session with real-time visibility (can respond to prompts)
 - **--resume**: Continue from last incomplete story/phase
 - **--yolo**: Skip user confirmation pauses between stories
 - **--force-model**: Skip model selection confirmation prompts (enables unattended automation)
 
 **Validation:**
 - epic_number must be a positive integer
-- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S] [--force-model]"
+- If no epic_number provided, error with: "Usage: /epic-dev-full <epic-number> [--yolo] [--resume] [--loop N] [--loop-delay S] [--interactive] [--force-model]"
 
 ---
 
@@ -84,6 +85,12 @@ IF "$ARGUMENTS" contains "--loop":
   # Extract loop parameters
   loop_max = extract_number_after("--loop", default=10)
   loop_delay = extract_number_after("--loop-delay", default=5)
+
+  # ═══════════════════════════════════════════════════════════
+  # BACKGROUND MODE (Fresh Context Per Iteration)
+  # ═══════════════════════════════════════════════════════════
+  # NOTE: Interactive mode was removed due to architectural mismatch
+  # with the ralph-loop plugin. See analysis in plans/vivid-noodling-wadler.md
 
   Output: "════════════════════════════════════════════════════════"
   Output: "🔄 RALPH LOOP MODE ACTIVATED (Full TDD/ATDD Workflow)"
@@ -102,6 +109,31 @@ IF "$ARGUMENTS" contains "--loop":
   # --force-model flag bypasses model confirmation prompts (inherited from parent)
   inner_command = "/epic-dev-full {epic_num} --yolo --phase-single --force-model"
 
+  # ═══════════════════════════════════════════════════════════
+  # PRE-CHECK: Is epic already complete?
+  # ═══════════════════════════════════════════════════════════
+  # Check sprint-status.yaml to avoid wasting iterations on completed epic
+  Read {sprint_artifacts}/sprint-status.yaml
+  all_stories_done = true
+  FOR each story matching "{epic_num}-*" in sprint-status.yaml:
+    IF story.status != "done":
+      all_stories_done = false
+      BREAK
+  END FOR
+
+  IF all_stories_done == true:
+    Output: ""
+    Output: "════════════════════════════════════════════════════════"
+    Output: "✅ EPIC {epic_num} ALREADY COMPLETE"
+    Output: "════════════════════════════════════════════════════════"
+    Output: "  All stories for this epic are already marked done."
+    Output: "  No iterations needed."
+    Output: "════════════════════════════════════════════════════════"
+    Output: ""
+    Output: "<promise>EPIC COMPLETE</promise>"
+    EXIT 0
+  END IF
+
   # Execute Ralph loop
   FOR iteration IN 1..loop_max:
 
@@ -113,39 +145,64 @@ IF "$ARGUMENTS" contains "--loop":
     Output: ""
 
     # Spawn fresh Claude instance with clean context
-    # Timeout protection: Kill if no progress after 20 minutes
+    # Timeout protection: 5 min overall + 60s stuck detection (heartbeat)
     ```bash
     ITERATION_START=$SECONDS
-    TIMEOUT_MINUTES=20
+    TIMEOUT_MINUTES=5
     TIMEOUT_SECONDS=$((TIMEOUT_MINUTES * 60))
+    LOG_DIR="/tmp/ralph-loop-epic-${epic_num}"
+    mkdir -p "$LOG_DIR"
+    LOG_FILE="$LOG_DIR/iter-${iteration}.log"
 
     # Start Claude in background
-    claude -p "{inner_command}" --dangerously-skip-permissions > /tmp/ralph-loop-${epic_num}-iter-${iteration}.log 2>&1 &
+    claude -p "{inner_command}" --dangerously-skip-permissions > "$LOG_FILE" 2>&1 &
     CLAUDE_PID=$!
 
-    # Monitor with timeout
+    # Monitor with timeout AND heartbeat detection
+    LAST_SIZE=0
+    STUCK_COUNT=0
+    EXIT_CODE=0
+
     while kill -0 $CLAUDE_PID 2>/dev/null; do
       ELAPSED=$((SECONDS - ITERATION_START))
+
+      # Check overall timeout (5 minutes)
       if [ $ELAPSED -gt $TIMEOUT_SECONDS ]; then
         echo "⚠️ TIMEOUT: Iteration exceeded ${TIMEOUT_MINUTES} minutes - killing stuck process"
         kill -9 $CLAUDE_PID 2>/dev/null
-        OUTPUT="TIMEOUT: Process exceeded ${TIMEOUT_MINUTES} minutes"
         EXIT_CODE=124
         break
       fi
+
+      # Check heartbeat (log file growth every 5 seconds)
+      CURRENT_SIZE=$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)
+      if [ "$CURRENT_SIZE" -eq "$LAST_SIZE" ]; then
+        STUCK_COUNT=$((STUCK_COUNT + 1))
+        if [ "$STUCK_COUNT" -ge 12 ]; then  # 60 seconds of no output
+          echo "⚠️ STUCK: No output for 60 seconds - killing process"
+          kill -9 $CLAUDE_PID 2>/dev/null
+          EXIT_CODE=125
+          break
+        fi
+      else
+        STUCK_COUNT=0  # Reset if progress detected
+      fi
+      LAST_SIZE=$CURRENT_SIZE
+
       sleep 5
     done
 
-    # Collect output if not timeout
-    if [ $EXIT_CODE -ne 124 ]; then
+    # Collect output if not timeout/stuck
+    if [ $EXIT_CODE -eq 0 ]; then
       wait $CLAUDE_PID
       EXIT_CODE=$?
-      OUTPUT=$(cat /tmp/ralph-loop-${epic_num}-iter-${iteration}.log)
-      echo "$OUTPUT" | tee /dev/stderr
     fi
 
-    # Cleanup
-    rm -f /tmp/ralph-loop-${epic_num}-iter-${iteration}.log
+    OUTPUT=$(cat "$LOG_FILE" 2>/dev/null || echo "")
+    echo "$OUTPUT" | tee /dev/stderr
+
+    # Keep logs for debugging (preserved in $LOG_DIR)
+    echo "Log preserved at: $LOG_FILE"
     ```
 
     # Check for epic completion signals
@@ -199,9 +256,9 @@ IF "$ARGUMENTS" contains "--loop":
   EXIT 1
 
 ELSE:
-  # Normal execution - continue to STEP 2
+  # Normal execution (no --loop flag) - continue to STEP 2
   PROCEED TO STEP 2
-END IF
+END IF  # End --loop check
 ```
 
 ---
@@ -238,7 +295,10 @@ Find stories for epic {epic_number}:
 - Order by story number
 
 If no pending stories:
-- Output: "All stories in Epic {epic_num} complete!"
+- Output: ""
+- Output: "<promise>EPIC COMPLETE</promise>"
+- Output: ""
+- Output: "✅ All stories in Epic {epic_num} complete!"
 - HALT
 
 ---
